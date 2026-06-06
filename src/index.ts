@@ -6,22 +6,22 @@ import { maybeApply } from "./utils/ProviderOr"
 const todos = useTodoStore()
 
 const appMenu: Menu = menu({
-  list: () =>
+  all: () =>
     todos.all()
       .then(todos => todos.map(t => t.title))
       .then(resultList),
   
-  listFields: () =>
+  fields: () =>
     todos.fields().then(resultList),
   
-  listFieldValues:
+  values:
     todos.fields().then(
       fields => menu(Object.fromEntries(fields.map(
         field => [field, () => todos.fieldValues(field).then(resultList)]
       )))
     ),
 
-  filterBy:
+  with:
     todos.fields().then(
       fields => menu(Object.fromEntries(fields.map(
         field => [
