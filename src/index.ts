@@ -1,26 +1,74 @@
-import { list } from "./folder"
 import { prompt, write } from "./io"
-import { walk, type Menu } from "./menu"
+import { menu, prev, result, run, walk, type Menu } from "./menu"
+import { useTodoStore } from "./todoStore"
+import { maybeApply } from "./utils/ProviderOr"
+
+const todos = useTodoStore()
+
+const appMenu: Menu = menu({
+  list: () =>
+    todos.all()
+      .then(todos => todos.map(t => t.title))
+      .then(resultList),
+  
+  listFields: () =>
+    todos.fields().then(resultList),
+  
+  listFieldValues:
+    todos.fields().then(
+      fields => menu(Object.fromEntries(fields.map(
+        field => [field, () => todos.fieldValues(field).then(resultList)]
+      )))
+    ),
+
+  filterBy:
+    todos.fields().then(
+      fields => menu(Object.fromEntries(fields.map(
+        field => [
+          field,
+          () => todos.fieldValues(field)
+              .then(values => menu(Object.fromEntries(values.map(
+                value => [
+                  value,
+                  todos.filterBy(field, value)
+                    .then(todos => todos.map(t => t.title))
+                    .then(resultList)
+                ]
+              ))))
+        ]
+      )))
+    )
+})
 
 
+if (process.argv.length > 0) {
+  walk(appMenu, process.argv.slice(2)).then(maybeWrite)
+} else {
+  console.log('run')
+  await run<number>(
+    appMenu,
+    async cur => {
 
-const menu: Menu = {
-  list: () => list().then(todos => todos.map(t => `#${t.id} - ${t.title}\n`).forEach(write))
+      const choice = await prompt((
+        Object.keys(cur.value).map(k => `- ${k}`).join('\n')
+      ))
+  
+      if (choice === '..') return prev()
+  
+      if (cur.value[choice] == null)
+        throw '`${choice} is not a valid choice'
+  
+      return maybeApply(cur.value[choice])
+    }
+  ).then(maybeWrite)
+
 }
 
 
-const callFunction = (foo: Function) => foo()
-const visit: (menu: Menu, curPath: string[], resolve: (foo: Function) => void) => Promise<string[]> =
-async (menu, curPath, resolve) => {
-  const choice = await prompt(
-    Object.keys(menu).map(k => `- ${k}`).join('\n')
-  )
-
-  if (menu[choice] == null)
-    throw `${choice} is not a valid choice`
-
-  if (typeof menu[choice] == 'function') resolve(menu[choice])
-  return [...curPath, choice]
+function maybeWrite(x: any | undefined) {
+  if (x) write(x.toString())
 }
 
-await walk(menu, visit).then(callFunction)
+function resultList(x: string[]) {
+  return result(x.join('\n'))
+}

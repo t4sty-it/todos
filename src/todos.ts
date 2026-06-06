@@ -1,7 +1,8 @@
-import { parse as yaml } from 'yaml'
+import { parse as yaml, stringify as toYaml } from 'yaml'
 
 export interface Todo {
   id: string
+  url: string
   title: string
   description?: string
   status?: string
@@ -9,8 +10,9 @@ export interface Todo {
   tags?: string[]
 }
 
-export const parse = (text: string, id: string): Todo => ({
-  id,
+export const parse = (text: string, url: string): Todo => ({
+  id: url.split('.').slice(0, -1).join('.'),
+  url,
   title: parseTitle(text),
   description: parseDescription(text),
   ...parseFrontMatter(text)
@@ -41,4 +43,11 @@ const parseDescription = (text: string) => {
   const lines = text.split('\n')
   const titleLineIdx = lines.findIndex(line => line.startsWith('# '))
   return lines.slice(titleLineIdx+1).join('\n')
+}
+
+export const stringify = (todo: Todo): string => {
+  const frontmatter = '---\n' + toYaml({status: todo.status, type: todo.type, tags: todo.tags}) + '\n---'
+  const title = '# ' + todo.title
+  
+  return [frontmatter, title, todo.description].join('\n')
 }
