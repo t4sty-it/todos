@@ -44,7 +44,13 @@ export const useTodoStore = (): TodoStore => {
     },
     filterBy: async (field, value) => {
       const todos = await listFolder(mainFolder)
-      return todos.filter(todo => todo[field] == value)
+      return todos.filter(todo => 
+        typeof todo[field] === 'string'
+        ? todo[field] == value
+        : Array.isArray(todo[field])
+          ? todo[field].includes(value)
+          : false
+      )
     }
   } 
 }
