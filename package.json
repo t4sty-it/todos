@@ -11,5 +11,8 @@
   "type": "module",
   "dependencies": {
     "yaml": "^2.9.0"
+  },
+  "scripts": {
+    "deploy": "bun build src/index --compile --outfile _todos && mv _todos $HOME/.bin/todos"
   }
 }
