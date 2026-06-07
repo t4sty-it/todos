@@ -41,10 +41,9 @@ const appMenu: Menu = menu({
 })
 
 
-if (process.argv.length > 0) {
+if (process.argv.length > 2) {
   walk(appMenu, process.argv.slice(2)).then(maybeWrite)
 } else {
-  console.log('run')
   await run<number>(
     appMenu,
     async cur => {
