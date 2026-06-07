@@ -1,6 +1,7 @@
 import { parse, type Todo } from "./todos";
 
 import { readdir } from 'node:fs/promises';
+import { useCache } from "./utils/useCache";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
@@ -13,11 +14,13 @@ const mainFolder = 'todos'
 
 export const useTodoStore = (): TodoStore => {
 
+  const todos = useCache(() => listFolder(mainFolder))
+
   return {
-    all: () => listFolder(mainFolder),
+    all: () => todos(),
     fields: async () => {
       const result = new Set<keyof Todo>()
-      await listFolder(mainFolder).then(todos => {
+      await todos().then(todos => {
         for (const todo of todos) {
           if (todo.status) result.add('status')
           if (todo.tags) result.add('tags')
@@ -29,7 +32,7 @@ export const useTodoStore = (): TodoStore => {
     },
     fieldValues: async field => {
       const result = new Set<string>()
-      await listFolder(mainFolder).then(todos => {
+      await todos().then(todos => {
         for (const todo of todos) {
           if (todo[field]) {
             if (typeof todo[field] == 'string')
@@ -43,8 +46,8 @@ export const useTodoStore = (): TodoStore => {
       return result.values().toArray()
     },
     filterBy: async (field, value) => {
-      const todos = await listFolder(mainFolder)
-      return todos.filter(todo => 
+      
+      return (await todos()).filter(todo => 
         typeof todo[field] === 'string'
         ? todo[field] == value
         : Array.isArray(todo[field])
