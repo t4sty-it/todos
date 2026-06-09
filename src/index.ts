@@ -1,5 +1,5 @@
 import { prompt, write } from "./io"
-import { menu, prev, result, run, walk, type Menu } from "./menu"
+import { menu, prev, result, run, strafe, stroll, walk, type Menu } from "./menu"
 import { useTodoStore } from "./todoStore"
 import { maybeApply } from "./utils/ProviderOr"
 
@@ -41,28 +41,22 @@ const appMenu: Menu = menu({
 })
 
 
-if (process.argv.length > 2) {
-  walk(appMenu, process.argv.slice(2)).then(maybeWrite)
-} else {
-  await run<number>(
-    appMenu,
-    async cur => {
-
-      const choice = await prompt((
-        Object.keys(cur.value).map(k => `- ${k}`).join('\n')
-      ))
-  
-      if (choice === '..') return prev()
-  
-      if (cur.value[choice] == null)
-        throw '`${choice} is not a valid choice'
-  
-      return maybeApply(cur.value[choice])
-    }
-  ).then(maybeWrite)
-
-}
-
+// if (process.argv.length > 2) {
+//   walk(appMenu, process.argv.slice(2)).then(maybeWrite)
+// } else {
+//   await stroll(appMenu, async menu => {
+//     return await prompt(
+//       Object.keys(menu.value).map(k => `- ${k}`).join('\n')
+//     )
+//   }).then(maybeWrite)
+// }
+strafe(
+  appMenu,
+  process.argv.slice(2),
+  menu => prompt(
+    Object.keys(menu.value).map(k => `- ${k}`).join('\n')
+  )
+).then(maybeWrite)
 
 function maybeWrite(x: any | undefined) {
   if (x) write(x.toString())

@@ -45,14 +45,15 @@ export const run = async <T>(
 
   while (path.at(-1)) {
 
-    const visitResult = await visit(path.at(-1)!)
+    const step = path.shift()!
+
+    const visitResult = await visit(step)
 
     if (isCancel(visitResult)) {
       return
     }
 
     if (isPrev(visitResult)) {
-      path.slice(0, -1)
       continue
     }
 
@@ -91,3 +92,50 @@ export const walk = async (menu: Menu, path: string[]) => {
   }
 }
 
+export const stroll = async (menu: Menu, choose: (menu: Menu) => Promise<string>) => {
+  const path: Menu[] = [menu]
+
+  while (path.length > 0) {
+    const curMenu = path.at(-1)!
+    const choice = await choose(curMenu)
+
+    if (choice in curMenu.value) {
+      const choiceResult = await (typeof curMenu.value[choice] === 'function'
+        ? curMenu.value[choice]()
+        : curMenu.value[choice]
+      )
+
+      if (isResult(choiceResult)) return choiceResult.value
+      if (isCancel(choiceResult)) return
+      if (isPrev(choiceResult)) path.splice(path.length - 1, 1)
+      if (isMenu(choiceResult)) path.push(choiceResult)
+    }
+    else throw 'Not a valid choice: ' + choice
+  }
+}
+
+export const strafe = async (menu: Menu, choices: string[], choose: (menu: Menu) => Promise<string>) => {
+  const steps: Menu[] = [menu]
+  const _choices = [...choices]
+
+  while (steps.length > 0) {
+    const curMenu = steps.at(-1)!
+    const choice = _choices.length > 0 ? _choices.shift()! : await choose(curMenu)
+
+    if (choice in curMenu.value) {
+      const choiceResult = await (typeof curMenu.value[choice] === 'function'
+        ? curMenu.value[choice]()
+        : curMenu.value[choice]
+      )
+
+      if (isResult(choiceResult)) {
+        return choiceResult.value
+      }
+      if (isCancel(choiceResult)) { return }
+      if (isPrev(choiceResult)) { steps.splice(steps.length - 1, 1) }
+      if (isMenu(choiceResult)) { steps.push(choiceResult) }
+
+    }
+    else throw 'Not a valid choice: ' + choice
+  }
+}
