@@ -12,7 +12,7 @@ todos fields                     # list available fields
 todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
 todos <id> set <field> <value>   # update a field on a todo
-todos create <slug>              # create a new todo
+todos create <slug>              # create a new todo (status: new, type: task, tags: untagged)
 ```
 
 If running from source: `bun run src/index.ts` in place of `todos`.

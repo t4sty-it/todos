@@ -62,7 +62,7 @@ export const useTodoStore = (): TodoStore => {
       const newId = String(maxId + 1)
       const url = `${newId}-${slug}.md`
       const title = slug.replace(/-/g, ' ')
-      const todo: Todo = { id: newId, url, title }
+      const todo: Todo = { id: newId, url, title, status: 'new', type: 'task', tags: ['untagged'] }
       await writeFile(`${mainFolder}/${url}`, stringify(todo))
       todos = useCache(() => listFolder(mainFolder))
       return todo
