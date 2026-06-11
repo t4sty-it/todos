@@ -1,7 +1,7 @@
 import { write } from "./io"
 import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
-import { match, ok, param, route, select, type Router } from "./utils/router"
+import { match, nonTerminal, ok, param, route, select, type Router } from "./utils/router"
 
 const todos = useTodoStore()
 
@@ -39,10 +39,19 @@ const router: Router<any, string> = select(
   ),
 
   match('create',
-    param('slug',
-      r => todos.create(r.params['slug']!)
-        .then(shortDisplay)
-        .then(ok)
+    select(
+      nonTerminal('type',
+        nonTerminal('slug',
+          r => todos.create(r.params['slug']!, r.params['type'])
+            .then(shortDisplay)
+            .then(ok)
+        )
+      ),
+      param('slug',
+        r => todos.create(r.params['slug']!)
+          .then(shortDisplay)
+          .then(ok)
+      )
     )
   ),
 

@@ -9,7 +9,7 @@ export interface TodoStore {
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
   set(id: string, field: keyof Todo, value: string): Promise<Todo>,
-  create(slug: string): Promise<Todo>
+  create(slug: string, type?: string): Promise<Todo>
 }
 
 const mainFolder = 'todos'
@@ -56,13 +56,13 @@ export const useTodoStore = (): TodoStore => {
           : false
       )
     },
-    create: async (slug) => {
+    create: async (slug, type = 'task') => {
       const all = await todos()
       const maxId = all.reduce((max, t) => Math.max(max, parseInt(t.id) || 0), 0)
       const newId = String(maxId + 1)
       const url = `${newId}-${slug}.md`
       const title = slug.replace(/-/g, ' ')
-      const todo: Todo = { id: newId, url, title, status: 'new', type: 'task', tags: ['untagged'] }
+      const todo: Todo = { id: newId, url, title, status: 'new', type, tags: ['untagged'] }
       await writeFile(`${mainFolder}/${url}`, stringify(todo))
       todos = useCache(() => listFolder(mainFolder))
       return todo

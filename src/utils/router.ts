@@ -49,7 +49,17 @@ async r => {
 export const param = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
 r => {
   if (r.tokens.length == 0) throw 'empty tokens'
-  
+
+  return child({
+    ...r,
+    tokens: r.tokens.slice(1),
+    params: {...r.params, [name]: r.tokens[0]!}
+  })
+}
+
+export const nonTerminal = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
+r => {
+  if (r.tokens[0] === EOP) return routeNotFound('404')
   return child({
     ...r,
     tokens: r.tokens.slice(1),
