@@ -1,4 +1,4 @@
-import { parse, patch, type Todo } from "./todos";
+import { parse, patch, stringify, type Todo } from "./todos";
 
 import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
@@ -8,7 +8,8 @@ export interface TodoStore {
   fields(): Promise<(keyof Todo)[]>,
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
-  set(id: string, field: keyof Todo, value: string): Promise<Todo>
+  set(id: string, field: keyof Todo, value: string): Promise<Todo>,
+  create(slug: string): Promise<Todo>
 }
 
 const mainFolder = 'todos'
@@ -54,6 +55,17 @@ export const useTodoStore = (): TodoStore => {
           ? todo[field].includes(value)
           : false
       )
+    },
+    create: async (slug) => {
+      const all = await todos()
+      const maxId = all.reduce((max, t) => Math.max(max, parseInt(t.id) || 0), 0)
+      const newId = String(maxId + 1)
+      const url = `${newId}-${slug}.md`
+      const title = slug.replace(/-/g, ' ')
+      const todo: Todo = { id: newId, url, title }
+      await writeFile(`${mainFolder}/${url}`, stringify(todo))
+      todos = useCache(() => listFolder(mainFolder))
+      return todo
     },
     set: async (id, field, value) => {
       const all = await todos()

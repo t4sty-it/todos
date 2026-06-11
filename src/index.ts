@@ -38,6 +38,14 @@ const router: Router<any, string> = select(
     )
   ),
 
+  match('create',
+    param('slug',
+      r => todos.create(r.params['slug']!)
+        .then(shortDisplay)
+        .then(ok)
+    )
+  ),
+
   param('id',
     match('set',
       param('field',

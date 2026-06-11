@@ -18,7 +18,7 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 ### Data layer
 
 - `src/todos.ts` — parses a single `.md` file into a `Todo` object
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`
+- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create()`
 - `src/folder.ts` — future optimization stub; builds a filesystem-symlink index under `.todos/<field>/<value>/<id>` for fast filtering; not currently used
 
 ### Router (`src/utils/router.ts`)
@@ -35,7 +35,7 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 
 ### Entry point (`src/index.ts`)
 
-Builds a `Router` directly from the todo store using `select`/`match`/`param`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Routes: `all`, `fields`, `values/<field>`, `with/<field>/<value>`.
+Builds a `Router` directly from the todo store using `select`/`match`/`param`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Routes: `all`, `fields`, `values/<field>`, `with/<field>/<value>`, `create/<slug>`.
 
 ### Deprecated
 
