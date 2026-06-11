@@ -14,7 +14,7 @@ tags: FE, BE
 `
 
   test('happy path', () => {
-    const result = parse(text, '1')
+    const result = parse(text, '1-test.md')
     expect(result.id).toBe('1')
     expect(result.title).toBe('Title')
     expect(result.description).toBe('## Chapter 1\n')

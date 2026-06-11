@@ -11,7 +11,7 @@ export interface Todo {
 }
 
 export const parse = (text: string, url: string): Todo => ({
-  id: url.split('.').slice(0, -1).join('.'),
+  id: url.split('-')[0]!,
   url,
   title: parseTitle(text),
   description: parseDescription(text),
