@@ -57,9 +57,9 @@ r => {
   })
 }
 
-export const nonTerminal = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
+export const when = <I, O>(pred: (token: string) => boolean, name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
 r => {
-  if (r.tokens[0] === EOP) return routeNotFound('404')
+  if (r.tokens[0] === EOP || !pred(r.tokens[0]!)) return routeNotFound('404')
   return child({
     ...r,
     tokens: r.tokens.slice(1),
@@ -67,5 +67,5 @@ r => {
   })
 }
 
-export const produce = <I, O>(cb: (r: Route<I>) => O | Promise<O>): Router<Route<I>, O> =>
-async r => ok(await cb(r))
+export const terminal = <I, O>(cb: (r: Route<I>) => PromiseOr<O>): Router<Route<I>, O> =>
+async r => r.tokens[0] === EOP ? ok(await cb(r)) : routeNotFound('404')

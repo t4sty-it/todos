@@ -18,8 +18,34 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 ### Data layer
 
 - `src/todos.ts` — parses a single `.md` file into a `Todo` object
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create()`
+- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`
 - `src/folder.ts` — future optimization stub; builds a filesystem-symlink index under `.todos/<field>/<value>/<id>` for fast filtering; not currently used
+
+### Config layer
+
+- `src/config.ts` — defines the `Config` interface, `applyDisplay(text, fields, config)` (merges style tokens and wraps text in ANSI escape codes), and `applyView(items, view)` (filters by include/exclude conditions and sorts)
+- `src/configStore.ts` — reads `todosConfig.json` at startup via `useCache`, returns an empty config if the file is absent; exposes `get(): Promise<Config>`
+
+`todosConfig.json` is optional. Supported format:
+
+```json
+{
+  "display": {
+    "<field>": { "<value>": "<style>" }
+  },
+  "views": {
+    "<name>": {
+      "include": [{ "<field>": "<value>" }],
+      "exclude": [{ "<field>": "<value>" }],
+      "sort": ["<field>", "<field> asc|desc"]
+    }
+  }
+}
+```
+
+**display**: Style strings are space-separated tokens. Modifiers: `bold`, `dim`, `italic`, `underline`. Colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`. When a todo matches rules from multiple fields, all matched tokens are unioned and applied together.
+
+**views**: Each named view defines a reusable filtered+sorted slice of the todo list, invoked with `view <name>`. `include` conditions are ANDed (todo must match all); `exclude` conditions are ORed (todo is dropped if it matches any). `sort` is a multi-key list where each entry is `"<field>"` or `"<field> asc|desc"` (defaults to `asc`).
 
 ### Router (`src/utils/router.ts`)
 
@@ -30,12 +56,29 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 | `select` | Tries each child router in order, returns the first `Ok` |
 | `match(token, child)` | Matches a literal path segment, advances to `child` |
 | `param(name, child)` | Captures the next path segment as a named param, advances to `child` |
+| `when(pred, name, child)` | Like `param`, but only captures if the token satisfies `pred` (and is not EOP) |
+| `terminal(cb)` | Succeeds only when the next token is EOP; calls `cb` and wraps result in `ok` |
 | `route(path, value)` | Constructs a `Route` by splitting `path` on `/` into tokens |
 | `ok` / `routeNotFound` | Result constructors |
 
 ### Entry point (`src/index.ts`)
 
-Builds a `Router` directly from the todo store using `select`/`match`/`param`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Routes: `all`, `fields`, `values/<field>`, `with/<field>/<value>`, `create/<slug>`.
+Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`terminal`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Routes:
+
+| Command | Description |
+|---------|-------------|
+| `all` | List all todos |
+| `fields` | List available fields |
+| `values/<field>` | List values for a field |
+| `with/<field>/<value>` | Filter todos by field value |
+| `view/<name>` | Apply a named view from config |
+| `create <slug>` | Create a todo (type defaults to `task`) |
+| `create <type> <slug>` | Create a todo with a given type |
+| `create <slug> #<tags>` | Create a todo with comma-separated tags |
+| `create <type> <slug> #<tags>` | Create a todo with type and tags |
+| `<id> set <field> <value>` | Set a field on a todo |
+
+Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
 ### Deprecated
 

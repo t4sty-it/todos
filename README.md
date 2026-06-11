@@ -8,11 +8,15 @@ Run from a directory that contains a `todos/` folder:
 
 ```bash
 todos all                        # list all todos
+todos view <name>                # apply a named view (filter + sort defined in config)
 todos fields                     # list available fields
 todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
 todos <id> set <field> <value>   # update a field on a todo
-todos create <slug>              # create a new todo (status: new, type: task, tags: untagged)
+todos create <slug>                       # create a new todo (type: task, tags: untagged)
+todos create <type> <slug>               # create with a given type
+todos create <slug> #<tag1,tag2>         # create with given tags
+todos create <type> <slug> #<tag1,tag2>  # create with type and tags
 ```
 
 If running from source: `bun run src/index.ts` in place of `todos`.
@@ -61,3 +65,60 @@ tags:
 ```
 
 When a field is updated with `set`, all other fields in the file are preserved exactly as written (no reformatting, no type coercion).
+
+## Configuration
+
+Place a `todosConfig.json` file next to your `todos/` folder to customise display. The file is optional — if absent, output is unstyled.
+
+### Display colors and formatting
+
+```json
+{
+  "display": {
+    "type": {
+      "bug":     "bold red",
+      "feature": "blue"
+    },
+    "status": {
+      "active": "bold",
+      "closed": "gray"
+    }
+  }
+}
+```
+
+Each key under `"display"` is a todo field (`type`, `status`, `tags`, …). Each value maps a field value to a style string — a space-separated list of tokens:
+
+| Token | Effect |
+|-------|--------|
+| `bold` | Bold text |
+| `dim` | Dimmed text |
+| `italic` | Italic text |
+| `underline` | Underlined text |
+| `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`, `black` | Foreground color |
+
+When a todo matches rules from more than one field, the styles are merged. For example, a todo with `type: feature` and `status: active` would display as bold blue.
+
+### Views
+
+Named views define reusable filtered and sorted slices of your todo list. Run them with `todos view <name>`.
+
+```json
+{
+  "views": {
+    "active-bugs": {
+      "include": [{ "type": "bug" }, { "status": "active" }],
+      "sort": ["priority asc", "id desc"]
+    },
+    "backlog": {
+      "include": [{ "status": "new" }],
+      "exclude": [{ "type": "spike" }],
+      "sort": ["type asc", "id asc"]
+    }
+  }
+}
+```
+
+- **`include`** — todo must match **all** listed conditions (AND)
+- **`exclude`** — todo is dropped if it matches **any** listed condition (OR)
+- **`sort`** — ordered list of sort keys; each entry is `"<field>"` or `"<field> asc|desc"` (defaults to `asc`)

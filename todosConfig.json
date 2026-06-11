@@ -1,0 +1,46 @@
+{
+  "display": {
+    "type": {
+      "bug": "red",
+      "feature": "italic blue"
+    },
+    "status": {
+      "active": "bold",
+      "closed": "gray"
+    }
+  },
+  "views": {
+    "features": {
+      "include": [
+        {
+          "type": "feature"
+        }
+      ],
+      "sort": [
+        "id desc"
+      ]
+    },
+    "bugs": {
+      "include": [
+        {
+          "type": "bug"
+        }
+      ],
+      "exclude": [
+        {
+          "status": "closed"
+        }
+      ],
+      "sort": [
+        "id desc"
+      ]
+    },
+
+    "backlog": {
+      "include": [
+        { "status": "new" }
+      ],
+      "sort": [ "type asc", "id desc" ]
+    }
+  }
+}
