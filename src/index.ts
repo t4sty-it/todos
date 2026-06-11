@@ -1,67 +1,51 @@
-import { prompt, write } from "./io"
-import { menu, prev, result, run, strafe, stroll, walk, type Menu } from "./menu"
+import { write } from "./io"
+import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
-import { maybeApply } from "./utils/ProviderOr"
+import { match, ok, param, route, select, type Router } from "./utils/router"
 
 const todos = useTodoStore()
 
-const appMenu: Menu = menu({
-  all: () =>
-    todos.all()
-      .then(todos => todos.map(t => t.title))
-      .then(resultList),
-  
-  fields: () =>
-    todos.fields().then(resultList),
-  
-  values:
-    todos.fields().then(
-      fields => menu(Object.fromEntries(fields.map(
-        field => [field, () => todos.fieldValues(field).then(resultList)]
-      )))
-    ),
+const router: Router<any, string> = select(
+  match('all', r => todos.all()
+      .then(todos => todos.map(shortDisplay))
+      .then(writeList)
+      .then(ok)
+  ),
 
-  with:
-    todos.fields().then(
-      fields => menu(Object.fromEntries(fields.map(
-        field => [
-          field,
-          () => todos.fieldValues(field)
-              .then(values => menu(Object.fromEntries(values.map(
-                value => [
-                  value,
-                  todos.filterBy(field, value)
-                    .then(todos => todos.map(t => t.title))
-                    .then(resultList)
-                ]
-              ))))
-        ]
-      )))
+  match('fields', r => todos.fields()
+    .then(writeList)
+    .then(ok)
+  ),
+
+  match('values',
+    param('field',
+      r => todos.fieldValues(r.params['field'] as keyof Todo)
+        .then(writeList)
+        .then(ok)
+    )),
+
+  match('with',
+    param('field',
+      param('value',
+        r => todos.filterBy(
+          r.params['field'] as keyof Todo,
+          r.params['value']!
+        )
+        .then(todos => todos.map(shortDisplay))
+        .then(writeList)
+        .then(ok)
+      )
     )
-})
-
-
-// if (process.argv.length > 2) {
-//   walk(appMenu, process.argv.slice(2)).then(maybeWrite)
-// } else {
-//   await stroll(appMenu, async menu => {
-//     return await prompt(
-//       Object.keys(menu.value).map(k => `- ${k}`).join('\n')
-//     )
-//   }).then(maybeWrite)
-// }
-strafe(
-  appMenu,
-  process.argv.slice(2),
-  menu => prompt(
-    Object.keys(menu.value).map(k => `- ${k}`).join('\n')
   )
-).then(maybeWrite)
+)
 
-function maybeWrite(x: any | undefined) {
-  if (x) write(x.toString())
+function writeList(x: string[]): string {
+  return x.join('\n')
 }
 
-function resultList(x: string[]) {
-  return result(x.join('\n'))
+function shortDisplay(todo: Todo): string {
+  return `#${todo.id} - ${todo.title}`
 }
+
+const r = await router(route(process.argv.slice(2).join('/'), ''))
+write(r.value)
