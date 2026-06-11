@@ -36,6 +36,22 @@ const router: Router<any, string> = select(
         .then(ok)
       )
     )
+  ),
+
+  param('id',
+    match('set',
+      param('field',
+        param('value',
+          r => todos.set(
+            r.params['id']!,
+            r.params['field'] as keyof Todo,
+            r.params['value']!
+          )
+          .then(shortDisplay)
+          .then(ok)
+        )
+      )
+    )
   )
 )
 

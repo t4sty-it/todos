@@ -1,20 +1,21 @@
-import { parse, type Todo } from "./todos";
+import { parse, stringify, type Todo } from "./todos";
 
-import { readdir } from 'node:fs/promises';
+import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
   fields(): Promise<(keyof Todo)[]>,
   fieldValues(field: keyof Todo): Promise<string[]>,
-  filterBy(field: keyof Todo, value: string): Promise<Todo[]>
+  filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
+  set(id: string, field: keyof Todo, value: string): Promise<Todo>
 }
 
 const mainFolder = 'todos'
 
 export const useTodoStore = (): TodoStore => {
 
-  const todos = useCache(() => listFolder(mainFolder))
+  let todos = useCache(() => listFolder(mainFolder))
 
   return {
     all: () => todos(),
@@ -46,16 +47,25 @@ export const useTodoStore = (): TodoStore => {
       return result.values().toArray()
     },
     filterBy: async (field, value) => {
-      
-      return (await todos()).filter(todo => 
+      return (await todos()).filter(todo =>
         typeof todo[field] === 'string'
         ? todo[field] == value
         : Array.isArray(todo[field])
           ? todo[field].includes(value)
           : false
       )
+    },
+    set: async (id, field, value) => {
+      const all = await todos()
+      const todo = all.find(t => t.id === id)
+      if (!todo) throw new Error(`Todo not found: ${id}`)
+
+      const updated = { ...todo, [field]: value }
+      await writeFile(`${mainFolder}/${todo.url}`, stringify(updated))
+      todos = useCache(() => listFolder(mainFolder))
+      return updated
     }
-  } 
+  }
 }
 
 const listFolder = async (folderPath: string): Promise<Todo[]> => {
