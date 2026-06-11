@@ -1,4 +1,4 @@
-import { parse, stringify, type Todo } from "./todos";
+import { parse, patch, type Todo } from "./todos";
 
 import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
@@ -60,10 +60,11 @@ export const useTodoStore = (): TodoStore => {
       const todo = all.find(t => t.id === id)
       if (!todo) throw new Error(`Todo not found: ${id}`)
 
-      const updated = { ...todo, [field]: value }
-      await writeFile(`${mainFolder}/${todo.url}`, stringify(updated))
+      const filePath = `${mainFolder}/${todo.url}`
+      const text = await Bun.file(filePath).text()
+      await writeFile(filePath, patch(text, field, value))
       todos = useCache(() => listFolder(mainFolder))
-      return updated
+      return { ...todo, [field]: value }
     }
   }
 }

@@ -48,6 +48,16 @@ const parseDescription = (text: string) => {
 export const stringify = (todo: Todo): string => {
   const frontmatter = '---\n' + toYaml({status: todo.status, type: todo.type, tags: todo.tags}) + '\n---'
   const title = '# ' + todo.title
-  
+
   return [frontmatter, title, todo.description].join('\n')
+}
+
+export const patch = (text: string, field: keyof Todo, value: string): string => {
+  const fmMatch = frontMatterRegex().exec(text)
+  if (!fmMatch) throw new Error('No front matter')
+
+  const rawFm = yaml(fmMatch[0].replace(/^---$/gm, '')) as Record<string, any>
+  rawFm[field] = value
+
+  return text.replace(fmMatch[0], '---\n' + toYaml(rawFm) + '---')
 }
