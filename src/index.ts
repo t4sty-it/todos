@@ -10,7 +10,7 @@ const config = await useConfigStore().get()
 
 const word = <O>(name: string, child: Router<any, O>) => when((t: string) => !t.startsWith('#'), name, child)
 const tag  = <O>(name: string, child: Router<any, O>) => when((t: string) =>  t.startsWith('#'), name, child)
-const parseTags = (s: string) => s.replace(/^#/, '').split(',')
+const parseTags = (s: string) => s.replace(/^#/, '').split(',').map(t => t.trim())
 
 const router: Router<any, string> = select(
   match('all', _ => todos.all()
@@ -47,7 +47,10 @@ const router: Router<any, string> = select(
     param('name',
       r => {
         const view = config.views?.[r.params['name']!]
-        if (!view) return ok(`Unknown view: "${r.params['name']}"`)
+        if (!view) {
+          const available = Object.keys(config.views ?? {}).join(', ') || 'none'
+          return ok(`Unknown view: "${r.params['name']}" (available: ${available})`)
+        }
         return todos.view(view)
           .then(tableDisplay)
           .then(ok)
@@ -101,17 +104,17 @@ function writeList(x: string[]): string {
   return x.join('\n')
 }
 
+const pad = (n: number) => String(n).padStart(2, '0')
+const fmt = (d: Date | undefined) => d
+  ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  : '—'
+
 function shortDisplay(todo: Todo): string {
   return applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
 }
 
 async function detailDisplay(todo: Todo): Promise<string> {
   const [created, updated] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const fmt = (d: Date | undefined) => d
-    ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-    : '—'
-
   const header = applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
   const lines: string[] = [header, '─'.repeat(40)]
 
@@ -130,10 +133,6 @@ async function tableDisplay(todos: Todo[]): Promise<string> {
   const rows = await Promise.all(
     todos.map(async todo => {
       const [created, updated] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const fmt = (d: Date | undefined) => d
-        ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-        : '—'
       return { todo, id: `#${todo.id}`, title: todo.title, dates: `${fmt(created)} → ${fmt(updated)}` }
     })
   )
