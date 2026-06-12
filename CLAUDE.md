@@ -17,9 +17,16 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 
 ### Data layer
 
-- `src/todos.ts` — parses a single `.md` file into a `Todo` object
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`
+- `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store
+- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk
+- `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, fetches `git log` dates only for files whose SHA changed since the last run, then writes the updated cache; exposed as `loadMetaCache()` (memoized via `useCache`)
 - `src/folder.ts` — future optimization stub; builds a filesystem-symlink index under `.todos/<field>/<value>/<id>` for fast filtering; not currently used
+
+`.todos/meta.json` schema:
+```json
+{ "<filename>.md": { "blobSha": "<sha>", "createdAt": "<ISO 8601>", "updatedAt": "<ISO 8601>" } }
+```
+Cache is invalidated per-file by git blob SHA — stable across checkouts and clones, unlike mtime. The `.todos/` directory should be added to `.gitignore`.
 
 ### Config layer
 
@@ -67,11 +74,11 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 
 | Command | Description |
 |---------|-------------|
-| `all` | List all todos |
+| `all` | List all todos as an aligned table with datetimes |
 | `fields` | List available fields |
 | `values/<field>` | List values for a field |
-| `with/<field>/<value>` | Filter todos by field value |
-| `view/<name>` | Apply a named view from config |
+| `with/<field>/<value>` | Filter todos by field value, table format |
+| `view/<name>` | Apply a named view from config, table format |
 | `create <slug>` | Create a todo (type defaults to `task`) |
 | `create <type> <slug>` | Create a todo with a given type |
 | `create <slug> #<tags>` | Create a todo with comma-separated tags |
@@ -80,6 +87,8 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 
 Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
+Listing commands (`all`, `with`, `view`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
+
 ### Deprecated
 
 - `src/menu.ts` — previous interactive menu system (discriminated-union navigation with `walk`/`stroll`/`strafe`); superseded by the router, kept for reference
@@ -87,5 +96,5 @@ Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
 ### Utilities
 
-- `src/utils/useCache.ts` — simple memoize-once wrapper; the store uses it so todos are read from disk only once per run
+- `src/utils/useCache.ts` — simple memoize-once wrapper; used by the store (todos read once per run) and `metaCache.ts` (meta cache built once per run)
 - `src/io.ts` — `write` (stdout) and `prompt` (read one line from stdin)

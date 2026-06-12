@@ -19,6 +19,16 @@ todos create <slug> #<tag1,tag2>         # create with given tags
 todos create <type> <slug> #<tag1,tag2>  # create with type and tags
 ```
 
+Listing commands (`all`, `with`, `view`) output an aligned table:
+
+```
+#1   fix login bug        2025-10-01 09:30 → 2026-06-10 14:22
+#4   add dark mode        2025-11-03 11:00 → 2026-06-01 08:45
+#10  write release notes  2026-01-15 16:00 → 2026-06-12 16:51
+```
+
+Dates reflect when the file was first committed (`created`) and last committed (`updated`), derived from git history. They are cached in `.todos/meta.json` — add `.todos/` to your `.gitignore`.
+
 If running from source: `bun run src/index.ts` in place of `todos`.
 
 ## Todo file format

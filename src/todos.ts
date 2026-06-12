@@ -8,6 +8,8 @@ export interface Todo {
   status?: string
   type?: string
   tags?: string[]
+  createdAt?: () => Promise<Date | undefined>
+  updatedAt?: () => Promise<Date | undefined>
 }
 
 export const parse = (text: string, url: string): Todo => ({

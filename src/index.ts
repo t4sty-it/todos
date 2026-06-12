@@ -13,13 +13,12 @@ const tag  = <O>(name: string, child: Router<any, O>) => when((t: string) =>  t.
 const parseTags = (s: string) => s.replace(/^#/, '').split(',')
 
 const router: Router<any, string> = select(
-  match('all', r => todos.all()
-      .then(todos => todos.map(shortDisplay))
-      .then(writeList)
+  match('all', _ => todos.all()
+      .then(tableDisplay)
       .then(ok)
   ),
 
-  match('fields', r => todos.fields()
+  match('fields', _ => todos.fields()
     .then(writeList)
     .then(ok)
   ),
@@ -38,8 +37,7 @@ const router: Router<any, string> = select(
           r.params['field'] as keyof Todo,
           r.params['value']!
         )
-        .then(todos => todos.map(shortDisplay))
-        .then(writeList)
+        .then(tableDisplay)
         .then(ok)
       )
     )
@@ -51,8 +49,7 @@ const router: Router<any, string> = select(
         const view = config.views?.[r.params['name']!]
         if (!view) return ok(`Unknown view: "${r.params['name']}"`)
         return todos.view(view)
-          .then(todos => todos.map(shortDisplay))
-          .then(writeList)
+          .then(tableDisplay)
           .then(ok)
       }
     )
@@ -88,6 +85,28 @@ function writeList(x: string[]): string {
 
 function shortDisplay(todo: Todo): string {
   return applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
+}
+
+async function tableDisplay(todos: Todo[]): Promise<string> {
+  const rows = await Promise.all(
+    todos.map(async todo => {
+      const [created, updated] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const fmt = (d: Date | undefined) => d
+        ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+        : '—'
+      return { todo, id: `#${todo.id}`, title: todo.title, dates: `${fmt(created)} → ${fmt(updated)}` }
+    })
+  )
+  const idWidth = Math.max(...rows.map(r => r.id.length))
+  const titleWidth = Math.max(...rows.map(r => r.title.length))
+  return rows.map(({ todo, id, title, dates }) =>
+    applyDisplay(
+      `${id.padEnd(idWidth)}  ${title.padEnd(titleWidth)}  ${dates}`,
+      todo as unknown as Record<string, unknown>,
+      config
+    )
+  ).join('\n')
 }
 
 const r = await router(route(process.argv.slice(2).join('/'), ''))

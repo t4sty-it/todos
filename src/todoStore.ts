@@ -3,6 +3,7 @@ import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
+import { loadMetaCache } from "./metaCache";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
@@ -93,6 +94,12 @@ const listFolder = async (folderPath: string): Promise<Todo[]> => {
   return Promise.all(
     files.map(f =>
       Bun.file(`todos/${f}`).text()
-        .then(text => parse(text, f)))
+        .then(text => {
+          const todo = parse(text, f)
+          todo.createdAt = () => loadMetaCache().then(m => m.get(f)?.createdAt)
+          todo.updatedAt = () => loadMetaCache().then(m => m.get(f)?.updatedAt)
+          return todo
+        })
+    )
   )
 }
