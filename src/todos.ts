@@ -20,13 +20,11 @@ export const parse = (text: string, url: string): Todo => ({
   ...parseFrontMatter(text)
 })
 
-const frontMatterRegex = () => /^---$((.*)\n)*---$/gm
-const titleRegex = () => /^# (.*)$/gm
+const frontMatterRegex = /^---$((.*)\n)*---$/m
+const titleRegex = /^# (.*)$/m
 
 const parseFrontMatter = (text: string): Partial<{status: string, type: string, tags: string[]}> => {
-  // text.match(/---\n(.*)\n---/)
-
-  const match = frontMatterRegex().exec(text)
+  const match = frontMatterRegex.exec(text)
   if (match == null) return {}
 
   const fm = match[0]
@@ -40,7 +38,7 @@ const parseFrontMatter = (text: string): Partial<{status: string, type: string, 
   return obj
 }
 
-const parseTitle = (text: string) => titleRegex().exec(text)?.at(1) ?? ''
+const parseTitle = (text: string) => titleRegex.exec(text)?.at(1) ?? ''
 const parseDescription = (text: string) => {
   const lines = text.split('\n')
   const titleLineIdx = lines.findIndex(line => line.startsWith('# '))
@@ -55,7 +53,7 @@ export const stringify = (todo: Todo): string => {
 }
 
 export const patch = (text: string, field: keyof Todo, value: string | string[]): string => {
-  const fmMatch = frontMatterRegex().exec(text)
+  const fmMatch = frontMatterRegex.exec(text)
   if (!fmMatch) throw new Error('No front matter')
 
   const rawFm = yaml(fmMatch[0].replace(/^---$/gm, '')) as Record<string, any>
