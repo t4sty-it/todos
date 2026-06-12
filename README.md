@@ -13,6 +13,8 @@ todos fields                     # list available fields
 todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
 todos <id>                       # show full detail for a single todo
+todos <id> tag add <tag>         # add a tag (idempotent)
+todos <id> tag remove <tag>      # remove a tag
 todos <id> set <field> <value>   # update a field on a todo
 todos create <slug>                       # create a new todo (type: task, tags: untagged)
 todos create <type> <slug>               # create with a given type

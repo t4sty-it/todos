@@ -2,7 +2,6 @@
 status: confirmed
 type: bug
 tags:
-  - untagged
-
+  - frolicking
 ---
 # some open bug

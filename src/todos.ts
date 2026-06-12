@@ -54,7 +54,7 @@ export const stringify = (todo: Todo): string => {
   return [frontmatter, title, todo.description].join('\n')
 }
 
-export const patch = (text: string, field: keyof Todo, value: string): string => {
+export const patch = (text: string, field: keyof Todo, value: string | string[]): string => {
   const fmMatch = frontMatterRegex().exec(text)
   if (!fmMatch) throw new Error('No front matter')
 

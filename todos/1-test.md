@@ -1,7 +1,8 @@
 ---
 type: bug
 status: active
-tags: FE
+tags:
+  - FE
 ---
 # Test title 1
 

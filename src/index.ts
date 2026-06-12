@@ -77,6 +77,12 @@ const router: Router<any, string> = select(
           )
         )
       ),
+      match('tag',
+        select(
+          match('add',    param('tag', terminal(r => todos.tag(r.params['id']!, 'add',    r.params['tag']!).then(shortDisplay)))),
+          match('remove', param('tag', terminal(r => todos.tag(r.params['id']!, 'remove', r.params['tag']!).then(shortDisplay)))),
+        )
+      ),
       terminal(r => todos.get(r.params['id']!).then(detailDisplay))
     )
   )

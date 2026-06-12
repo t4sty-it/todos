@@ -2,7 +2,7 @@
 status: new
 type: bug
 tags:
-  - untagged
-
+  - some-tag
+  - frolicking
 ---
 # yet again

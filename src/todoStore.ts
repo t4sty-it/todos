@@ -11,6 +11,7 @@ export interface TodoStore {
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
   get(id: string): Promise<Todo>,
+  tag(id: string, op: 'add' | 'remove', tag: string): Promise<Todo>,
   set(id: string, field: keyof Todo, value: string): Promise<Todo>,
   create(slug: string, type?: string, tags?: string[]): Promise<Todo>,
   view(config: View): Promise<Todo[]>
@@ -75,6 +76,22 @@ export const useTodoStore = (): TodoStore => {
       const todo = (await todos()).find(t => t.id === id)
       if (!todo) throw new Error(`Todo not found: ${id}`)
       return todo
+    },
+    tag: async (id, op, tagName) => {
+      const all = await todos()
+      const todo = all.find(t => t.id === id)
+      if (!todo) throw new Error(`Todo not found: ${id}`)
+
+      const current = todo.tags ?? []
+      const newTags = op === 'add'
+        ? [...new Set([...current, tagName])].filter(t => t !== 'untagged')
+        : current.filter(t => t !== tagName)
+
+      const filePath = `${mainFolder}/${todo.url}`
+      const text = await Bun.file(filePath).text()
+      await writeFile(filePath, patch(text, 'tags', newTags))
+      todos = useCache(() => listFolder(mainFolder))
+      return { ...todo, tags: newTags }
     },
     view: async (viewConfig) => {
       const all = await todos()

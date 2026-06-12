@@ -23,7 +23,7 @@ export const init = async () => {
       await mkdir(path.join(cacheFolder, field), { recursive: true })
       
       const fieldValue = todo[field as keyof Todo]
-      if (!fieldValue) continue
+      if (!fieldValue || typeof fieldValue === 'function') continue
       
       const values = Array.isArray(fieldValue) ? fieldValue : [fieldValue]
       for (const value of values) {
