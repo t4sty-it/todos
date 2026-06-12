@@ -18,9 +18,8 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 ### Data layer
 
 - `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk
-- `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, fetches `git log` dates only for files whose SHA changed since the last run, then writes the updated cache; exposed as `loadMetaCache()` (memoized via `useCache`)
-- `src/folder.ts` — future optimization stub; builds a filesystem-symlink index under `.todos/<field>/<value>/<id>` for fast filtering; not currently used
+- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`)
+- `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, fetches `git log` dates only for files whose SHA changed since the last run, then writes the updated cache; exposed as `loadMetaCache()` (memoized via `useCache`); entries with missing or invalid dates are silently omitted
 
 `.todos/meta.json` schema:
 ```json
@@ -31,7 +30,7 @@ Cache is invalidated per-file by git blob SHA — stable across checkouts and cl
 ### Config layer
 
 - `src/config.ts` — defines the `Config` interface, `applyDisplay(text, fields, config)` (merges style tokens and wraps text in ANSI escape codes), and `applyView(items, view)` (filters by include/exclude conditions and sorts)
-- `src/configStore.ts` — reads `todosConfig.json` at startup via `useCache`, returns an empty config if the file is absent; exposes `get(): Promise<Config>`
+- `src/configStore.ts` — reads `todosConfig.json` at startup via `useCache`, returns an empty config if the file is absent; prints a warning to stderr if the file exists but cannot be parsed; exposes `get(): Promise<Config>`
 
 `todosConfig.json` is optional. Supported format:
 
@@ -89,16 +88,11 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `<id> edit` | Open the todo file in the configured editor; shows updated detail on exit |
 | `<id> tag add <tag>` | Add a tag to a todo (idempotent) |
 | `<id> tag remove <tag>` | Remove a tag from a todo |
-| `<id> set <field> <value>` | Set a field on a todo |
+| `<id> set <field> <value>` | Set a field on a todo (`id`, `url`, `createdAt`, `updatedAt` are read-only) |
 
 Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
 Listing commands (`all`, `with`, `view`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
-
-### Deprecated
-
-- `src/menu.ts` — previous interactive menu system (discriminated-union navigation with `walk`/`stroll`/`strafe`); superseded by the router, kept for reference
-- `src/utils/ProviderOr.ts` — lazy-value helper used by the old menu system
 
 ### Utilities
 
