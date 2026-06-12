@@ -17,10 +17,10 @@ todos <id>                       # show full detail for a single todo
 todos <id> edit                  # open the todo file in the configured editor
 todos <id> tag add <tag>         # add a tag (idempotent)
 todos <id> tag remove <tag>      # remove a tag
-todos <id> set <field> <value>   # update a field on a todo
+todos <id> set <field> <value>   # update a field on a todo (status, type, title, description, tags)
 todos create <slug>                       # create a new todo (type: task, tags: untagged)
 todos create <type> <slug>               # create with a given type
-todos create <slug> #<tag1,tag2>         # create with given tags
+todos create <slug> #<tag1,tag2>         # create with given tags (whitespace around commas is trimmed)
 todos create <type> <slug> #<tag1,tag2>  # create with type and tags
 ```
 
