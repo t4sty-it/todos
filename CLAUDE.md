@@ -18,7 +18,7 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 ### Data layer
 
 - `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk
+- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `get(id)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk
 - `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, fetches `git log` dates only for files whose SHA changed since the last run, then writes the updated cache; exposed as `loadMetaCache()` (memoized via `useCache`)
 - `src/folder.ts` — future optimization stub; builds a filesystem-symlink index under `.todos/<field>/<value>/<id>` for fast filtering; not currently used
 
@@ -83,6 +83,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `create <type> <slug>` | Create a todo with a given type |
 | `create <slug> #<tags>` | Create a todo with comma-separated tags |
 | `create <type> <slug> #<tags>` | Create a todo with type and tags |
+| `<id>` | Show full detail for a single todo (all fields, description, dates) |
 | `<id> set <field> <value>` | Set a field on a todo |
 
 Tags tokens are distinguished from type/slug tokens by a leading `#`.

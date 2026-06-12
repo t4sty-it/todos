@@ -12,6 +12,7 @@ todos view <name>                # apply a named view (filter + sort defined in 
 todos fields                     # list available fields
 todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
+todos <id>                       # show full detail for a single todo
 todos <id> set <field> <value>   # update a field on a todo
 todos create <slug>                       # create a new todo (type: task, tags: untagged)
 todos create <type> <slug>               # create with a given type

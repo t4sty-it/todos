@@ -63,18 +63,21 @@ const router: Router<any, string> = select(
   )),
 
   param('id',
-    match('set',
-      param('field',
-        param('value',
-          r => todos.set(
-            r.params['id']!,
-            r.params['field'] as keyof Todo,
-            r.params['value']!
+    select(
+      match('set',
+        param('field',
+          param('value',
+            r => todos.set(
+              r.params['id']!,
+              r.params['field'] as keyof Todo,
+              r.params['value']!
+            )
+            .then(shortDisplay)
+            .then(ok)
           )
-          .then(shortDisplay)
-          .then(ok)
         )
-      )
+      ),
+      terminal(r => todos.get(r.params['id']!).then(detailDisplay))
     )
   )
 )
@@ -85,6 +88,27 @@ function writeList(x: string[]): string {
 
 function shortDisplay(todo: Todo): string {
   return applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
+}
+
+async function detailDisplay(todo: Todo): Promise<string> {
+  const [created, updated] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmt = (d: Date | undefined) => d
+    ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    : '—'
+
+  const header = applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
+  const lines: string[] = [header, '─'.repeat(40)]
+
+  if (todo.status)       lines.push(`status:  ${todo.status}`)
+  if (todo.type)         lines.push(`type:    ${todo.type}`)
+  if (todo.tags?.length) lines.push(`tags:    ${todo.tags.join(', ')}`)
+  lines.push(`created: ${fmt(created)}`)
+  lines.push(`updated: ${fmt(updated)}`)
+
+  if (todo.description?.trim()) lines.push('', todo.description.trim())
+
+  return lines.join('\n')
 }
 
 async function tableDisplay(todos: Todo[]): Promise<string> {

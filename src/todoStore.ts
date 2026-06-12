@@ -10,6 +10,7 @@ export interface TodoStore {
   fields(): Promise<(keyof Todo)[]>,
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
+  get(id: string): Promise<Todo>,
   set(id: string, field: keyof Todo, value: string): Promise<Todo>,
   create(slug: string, type?: string, tags?: string[]): Promise<Todo>,
   view(config: View): Promise<Todo[]>
@@ -68,6 +69,11 @@ export const useTodoStore = (): TodoStore => {
       const todo: Todo = { id: newId, url, title, status: 'new', type, tags }
       await writeFile(`${mainFolder}/${url}`, stringify(todo))
       todos = useCache(() => listFolder(mainFolder))
+      return todo
+    },
+    get: async id => {
+      const todo = (await todos()).find(t => t.id === id)
+      if (!todo) throw new Error(`Todo not found: ${id}`)
       return todo
     },
     view: async (viewConfig) => {
