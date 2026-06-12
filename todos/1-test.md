@@ -1,6 +1,6 @@
 ---
 type: bug
-status: active
+status: closed
 tags:
   - FE
 ---

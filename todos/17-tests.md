@@ -1,8 +1,7 @@
 ---
-status: new
+status: active
 type: actual-task
 tags:
   - untagged
-
 ---
 # tests
