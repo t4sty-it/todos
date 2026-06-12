@@ -12,6 +12,7 @@ todos view <name>                # apply a named view (filter + sort defined in 
 todos fields                     # list available fields
 todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
+todos with <field> ""            # filter todos where the field is absent or empty
 todos <id>                       # show full detail for a single todo
 todos <id> tag add <tag>         # add a tag (idempotent)
 todos <id> tag remove <tag>      # remove a tag

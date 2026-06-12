@@ -1,7 +1,6 @@
 ---
 status: confirmed
 type: bug
-tags:
-  - frolicking
+tags: []
 ---
 # some open bug

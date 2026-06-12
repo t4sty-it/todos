@@ -77,7 +77,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `all` | List all todos as an aligned table with datetimes |
 | `fields` | List available fields |
 | `values/<field>` | List values for a field |
-| `with/<field>/<value>` | Filter todos by field value, table format |
+| `with/<field>/<value>` | Filter todos by field value, table format; empty string matches absent/empty fields |
 | `view/<name>` | Apply a named view from config, table format |
 | `create <slug>` | Create a todo (type defaults to `task`) |
 | `create <type> <slug>` | Create a todo with a given type |

@@ -53,13 +53,15 @@ export const useTodoStore = (): TodoStore => {
       return result.values().toArray()
     },
     filterBy: async (field, value) => {
-      return (await todos()).filter(todo =>
-        typeof todo[field] === 'string'
-        ? todo[field] == value
-        : Array.isArray(todo[field])
-          ? todo[field].includes(value)
-          : false
-      )
+      return (await todos()).filter(todo => {
+        const v = todo[field]
+        if (value === '') return v == null || v === '' || (Array.isArray(v) && v.length === 0)
+        return typeof v === 'string'
+          ? v === value
+          : Array.isArray(v)
+            ? v.includes(value)
+            : false
+      })
     },
     create: async (slug, type = 'task', tags = ['untagged']) => {
       const all = await todos()
