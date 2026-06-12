@@ -65,8 +65,10 @@ const buildMetaCache = async (): Promise<Map<string, { createdAt: Date, updatedA
 
   const result = new Map<string, { createdAt: Date, updatedAt: Date }>()
   for (const [filename, entry] of Object.entries(stored)) {
-    if (entry.createdAt && entry.updatedAt) {
-      result.set(filename, { createdAt: new Date(entry.createdAt), updatedAt: new Date(entry.updatedAt) })
+    const createdAt = entry.createdAt ? new Date(entry.createdAt) : undefined
+    const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : undefined
+    if (createdAt && updatedAt && !isNaN(createdAt.getTime()) && !isNaN(updatedAt.getTime())) {
+      result.set(filename, { createdAt, updatedAt })
     }
   }
   return result
