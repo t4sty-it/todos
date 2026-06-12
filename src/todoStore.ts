@@ -11,6 +11,7 @@ export interface TodoStore {
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
   get(id: string): Promise<Todo>,
+  reload(): void,
   tag(id: string, op: 'add' | 'remove', tag: string): Promise<Todo>,
   set(id: string, field: keyof Todo, value: string): Promise<Todo>,
   create(slug: string, type?: string, tags?: string[]): Promise<Todo>,
@@ -79,6 +80,7 @@ export const useTodoStore = (): TodoStore => {
       if (!todo) throw new Error(`Todo not found: ${id}`)
       return todo
     },
+    reload: () => { todos = useCache(() => listFolder(mainFolder)) },
     tag: async (id, op, tagName) => {
       const all = await todos()
       const todo = all.find(t => t.id === id)

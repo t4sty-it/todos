@@ -77,6 +77,15 @@ const router: Router<any, string> = select(
           )
         )
       ),
+      match('edit', terminal(async r => {
+        const editor = config.editor ?? process.env.EDITOR
+        if (!editor) return 'No editor configured. Set "editor" in todosConfig.json or $EDITOR.'
+        const todo = await todos.get(r.params['id']!)
+        const proc = Bun.spawn([...editor.split(/\s+/), `todos/${todo.url}`], { stdin: 'inherit', stdout: 'inherit', stderr: 'inherit' })
+        await proc.exited
+        todos.reload()
+        return detailDisplay(await todos.get(r.params['id']!))
+      })),
       match('tag',
         select(
           match('add',    param('tag', terminal(r => todos.tag(r.params['id']!, 'add',    r.params['tag']!).then(shortDisplay)))),

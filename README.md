@@ -14,6 +14,7 @@ todos values <field>             # list all values for a field
 todos with <field> <value>       # filter todos by field value
 todos with <field> ""            # filter todos where the field is absent or empty
 todos <id>                       # show full detail for a single todo
+todos <id> edit                  # open the todo file in the configured editor
 todos <id> tag add <tag>         # add a tag (idempotent)
 todos <id> tag remove <tag>      # remove a tag
 todos <id> set <field> <value>   # update a field on a todo
@@ -82,7 +83,17 @@ When a field is updated with `set`, all other fields in the file are preserved e
 
 ## Configuration
 
-Place a `todosConfig.json` file next to your `todos/` folder to customise display. The file is optional — if absent, output is unstyled.
+Place a `todosConfig.json` file next to your `todos/` folder. The file is optional — if absent, output is unstyled.
+
+### Editor
+
+Set `"editor"` to the command used to open files. Falls back to `$EDITOR` if unset.
+
+```json
+{ "editor": "nvim" }
+```
+
+Multi-word commands work too: `"editor": "code --wait"`. The `<id> edit` command opens the todo's `.md` file in this editor and shows the updated detail view after you close it.
 
 ### Display colors and formatting
 

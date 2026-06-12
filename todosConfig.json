@@ -42,5 +42,6 @@
       ],
       "sort": [ "type asc", "id desc" ]
     }
-  }
+  },
+  "editor": "nvim"
 }

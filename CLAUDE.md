@@ -50,6 +50,8 @@ Cache is invalidated per-file by git blob SHA — stable across checkouts and cl
 }
 ```
 
+**editor**: Command used to open todo files (e.g. `"nvim"`, `"code --wait"`). Falls back to `$EDITOR` if absent. Multi-word commands are split on whitespace before spawning.
+
 **display**: Style strings are space-separated tokens. Modifiers: `bold`, `dim`, `italic`, `underline`. Colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`. When a todo matches rules from multiple fields, all matched tokens are unioned and applied together.
 
 **views**: Each named view defines a reusable filtered+sorted slice of the todo list, invoked with `view <name>`. `include` conditions are ANDed (todo must match all); `exclude` conditions are ORed (todo is dropped if it matches any). `sort` is a multi-key list where each entry is `"<field>"` or `"<field> asc|desc"` (defaults to `asc`).
@@ -84,6 +86,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `create <slug> #<tags>` | Create a todo with comma-separated tags |
 | `create <type> <slug> #<tags>` | Create a todo with type and tags |
 | `<id>` | Show full detail for a single todo (all fields, description, dates) |
+| `<id> edit` | Open the todo file in the configured editor; shows updated detail on exit |
 | `<id> tag add <tag>` | Add a tag to a todo (idempotent) |
 | `<id> tag remove <tag>` | Remove a tag from a todo |
 | `<id> set <field> <value>` | Set a field on a todo |
