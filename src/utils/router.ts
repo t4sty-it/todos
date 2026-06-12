@@ -36,7 +36,7 @@ export const next = <T>(r: Route<T>): Route<T> => ({
 
 export const match = <I, O>(token: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
 async r => {
-  if (r.tokens.length == 0) throw 'empty tokens'
+  if (r.tokens.length == 0) throw new Error('empty tokens')
 
   if (r.tokens[0] === token) {
     return child(next(r))
@@ -48,7 +48,7 @@ async r => {
 
 export const param = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
 r => {
-  if (r.tokens.length == 0) throw 'empty tokens'
+  if (r.tokens.length == 0) throw new Error('empty tokens')
 
   return child({
     ...r,
