@@ -60,6 +60,12 @@ export const applyDisplay = (
   return `${prefix}${text}${reset}`
 }
 
+const compareValues = (a: string, b: string): number => {
+  const na = Number(a), nb = Number(b)
+  if (a !== '' && b !== '' && isFinite(na) && isFinite(nb)) return na - nb
+  return a.localeCompare(b)
+}
+
 export const applyView = (
   items: Record<string, unknown>[],
   view: View
@@ -93,9 +99,7 @@ export const applyView = (
       for (const entry of view.sort!) {
         const [field, dir] = entry.trim().split(/\s+/)
         const direction = dir?.toLowerCase() === 'desc' ? -1 : 1
-        const av = String(a[field!] ?? '')
-        const bv = String(b[field!] ?? '')
-        const cmp = av.localeCompare(bv)
+        const cmp = compareValues(String(a[field!] ?? ''), String(b[field!] ?? ''))
         if (cmp !== 0) return cmp * direction
       }
       return 0
