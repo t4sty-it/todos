@@ -147,5 +147,10 @@ async function tableDisplay(todos: Todo[]): Promise<string> {
   ).join('\n')
 }
 
-const r = await router(route(process.argv.slice(2).join('/'), ''))
-write(r.value)
+try {
+  const r = await router(route(process.argv.slice(2).join('/'), ''))
+  write(r.value)
+} catch (e) {
+  process.stderr.write(`Error: ${e instanceof Error ? e.message : e}\n`)
+  process.exit(1)
+}
