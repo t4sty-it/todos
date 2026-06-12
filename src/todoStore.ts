@@ -102,6 +102,8 @@ export const useTodoStore = (): TodoStore => {
       return applyView(all as unknown as Record<string, unknown>[], viewConfig) as unknown as Todo[]
     },
     set: async (id, field, value) => {
+      const readonlyFields: (keyof Todo)[] = ['id', 'url', 'createdAt', 'updatedAt']
+      if (readonlyFields.includes(field)) throw new Error(`Field "${field}" is read-only`)
       const all = await todos()
       const todo = all.find(t => t.id === id)
       if (!todo) throw new Error(`Todo not found: ${id}`)
@@ -120,7 +122,7 @@ const listFolder = async (folderPath: string): Promise<Todo[]> => {
 
   return Promise.all(
     files.map(f =>
-      Bun.file(`todos/${f}`).text()
+      Bun.file(`${folderPath}/${f}`).text()
         .then(text => {
           const todo = parse(text, f)
           todo.createdAt = () => loadMetaCache().then(m => m.get(f)?.createdAt)
