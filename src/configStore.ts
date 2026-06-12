@@ -13,10 +13,12 @@ export const useConfigStore = (): ConfigStore => {
 }
 
 const loadConfig = async (): Promise<Config> => {
+  const file = Bun.file(configFile)
+  if (!await file.exists()) return emptyConfig
   try {
-    const text = await Bun.file(configFile).text()
-    return JSON.parse(text) as Config
-  } catch {
+    return JSON.parse(await file.text()) as Config
+  } catch (e) {
+    process.stderr.write(`Warning: failed to parse ${configFile}: ${e}\n`)
     return emptyConfig
   }
 }
