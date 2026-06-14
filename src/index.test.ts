@@ -251,11 +251,11 @@ describe('create', () => {
 })
 
 describe('unrecognised input', () => {
-  test('two-token unrecognised path returns 404', async () => {
+  test('two-token unrecognised path shows help', async () => {
     // A single unknown token always routes to <id> (which then throws "not found").
-    // Two tokens where the second doesn't match any <id> subcommand produce RouteNotFound.
+    // Two tokens where the second doesn't match any <id> subcommand produce RouteNotFound → help.
     const { out, exitCode } = await run('unknown-id', 'bad-subcommand')
     expect(exitCode).toBe(0)
-    expect(out).toContain('404')
+    expect(out).toContain('Usage: todos <command>')
   })
 })

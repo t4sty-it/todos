@@ -7,21 +7,22 @@ A CLI tool for browsing and filtering markdown-based todo files.
 Run from a directory that contains a `todos/` folder:
 
 ```bash
-todos all                        # list all todos
-todos view <name>                # apply a named view (filter + sort defined in config)
-todos fields                     # list available fields
-todos values <field>             # list all values for a field
-todos with <field> <value>       # filter todos by field value
-todos with <field> ""            # filter todos where the field is absent or empty
-todos <id>                       # show full detail for a single todo
-todos <id> edit                  # open the todo file in the configured editor
-todos <id> tag add <tag>         # add a tag (idempotent)
-todos <id> tag remove <tag>      # remove a tag
-todos <id> set <field> <value>   # update a field on a todo (status, type, title, description, tags)
-todos create <slug>                       # create a new todo (type: task, tags: untagged)
-todos create <type> <slug>               # create with a given type
-todos create <slug> #<tag1,tag2>         # create with given tags (whitespace around commas is trimmed)
-todos create <type> <slug> #<tag1,tag2>  # create with type and tags
+todos --help                             # show this command listing
+todos all                                # list all todos
+todos view <name>                        # apply a named view (filter + sort defined in config)
+todos fields                             # list available fields
+todos values <field>                     # list all values for a field
+todos with <field> <value>              # filter todos by field value
+todos with <field> ""                    # filter todos where the field is absent or empty
+todos <id>                               # show full detail for a single todo
+todos <id> edit                          # open the todo file in the configured editor
+todos <id> tag add <tag>                # add a tag (idempotent)
+todos <id> tag remove <tag>             # remove a tag
+todos <id> set <field> <value>          # update a field on a todo (status, type, title, description, tags)
+todos create <slug>                      # create a new todo (type: task, tags: untagged)
+todos create <type> <slug>              # create with a given type
+todos create <slug> #<tag1,tag2>        # create with given tags (whitespace around commas is trimmed)
+todos create <type> <slug> #<tag1,tag2> # create with type and tags
 ```
 
 Listing commands (`all`, `with`, `view`) output an aligned table:

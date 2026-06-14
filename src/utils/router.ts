@@ -11,16 +11,42 @@ export type RouteNotFound = {_tag: 'RouteNotFound', value: string}
 export const routeNotFound = (value: string): RouteNotFound => ({_tag: 'RouteNotFound', value})
 
 
-export const select: <I, O>(...routers: Router<I,O>[]) => Router<I, O> =
-(...routers) => async i => {
-  for (const router of routers) {
-    const result = await router(i)
-    if (isOk(result)) {
-      return result
-    }
-  }
+export interface Doc {
+  document(): string
+}
 
-  return routeNotFound('404')
+export function doc<I, O>(command: string, description: string, router: Router<I, O>): Router<I, O> & Doc {
+  return Object.assign((i: I) => router(i), { document: () => `${command}\t${description}` })
+}
+
+export function helpText(router: Router<any, any>): string {
+  const raw = ('document' in router) ? (router as Doc).document() : ''
+  const entries = raw.split('\n').filter(Boolean).map(line => {
+    const t = line.indexOf('\t')
+    return t >= 0 ? [line.slice(0, t), line.slice(t + 1)] as [string, string] : [line, ''] as [string, string]
+  })
+  const width = Math.max(0, ...entries.map(([c]) => c.length))
+  return 'Usage: todos <command>\n\nCommands:\n' +
+    entries.map(([c, d]) => `  ${c.padEnd(width)}  ${d}`).join('\n')
+}
+
+export const select = <I, O>(...routers: Router<I, O>[]): Router<I, O> & Doc => {
+  const fn = async (i: I) => {
+    for (const router of routers) {
+      const result = await router(i)
+      if (isOk(result)) {
+        return result
+      }
+    }
+    return routeNotFound('404')
+  }
+  return Object.assign(fn, {
+    document: () => routers
+      .filter((r): r is Router<I, O> & Doc => 'document' in r)
+      .flatMap(r => (r as Doc).document().split('\n'))
+      .filter(Boolean)
+      .join('\n')
+  })
 }
 
 export type Route<T> = { tokens: string[], params: Record<string, string>, value: T }
@@ -46,14 +72,17 @@ async r => {
   }
 }
 
-export const param = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> =>
-r => {
-  if (r.tokens.length == 0) throw new Error('empty tokens')
-
-  return child({
-    ...r,
-    tokens: r.tokens.slice(1),
-    params: {...r.params, [name]: r.tokens[0]!}
+export const param = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> & Doc => {
+  const fn = (r: Route<I>) => {
+    if (r.tokens.length == 0) throw new Error('empty tokens')
+    return child({
+      ...r,
+      tokens: r.tokens.slice(1),
+      params: {...r.params, [name]: r.tokens[0]!}
+    })
+  }
+  return Object.assign(fn, {
+    document: () => 'document' in child ? (child as Doc).document() : ''
   })
 }
 

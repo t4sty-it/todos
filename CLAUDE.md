@@ -61,20 +61,23 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 
 | Export | Behavior |
 |--------|----------|
-| `select` | Tries each child router in order, returns the first `Ok` |
+| `select` | Tries each child router in order, returns the first `Ok`; implements `Doc` by aggregating child docs |
 | `match(token, child)` | Matches a literal path segment, advances to `child` |
-| `param(name, child)` | Captures the next path segment as a named param, advances to `child` |
+| `param(name, child)` | Captures the next path segment as a named param, advances to `child`; implements `Doc` by delegating to child |
 | `when(pred, name, child)` | Like `param`, but only captures if the token satisfies `pred` (and is not EOP) |
 | `terminal(cb)` | Succeeds only when the next token is EOP; calls `cb` and wraps result in `ok` |
 | `route(path, value)` | Constructs a `Route` by splitting `path` on `/` into tokens |
 | `ok` / `routeNotFound` | Result constructors |
+| `doc(command, description, router)` | Wraps a router with a `Doc` annotation; `command` and `description` are used by `helpText` |
+| `helpText(router)` | Extracts all `Doc` annotations from a router tree and formats them as an aligned command listing |
 
 ### Entry point (`src/index.ts`)
 
-Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`terminal`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Routes:
+Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`terminal`/`doc`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Passing no arguments, `--help`, or `-h` (or an unrecognised route) prints help via `helpText(router)`. Routes:
 
 | Command | Description |
 |---------|-------------|
+| `--help` / `-h` | Print help listing all commands (also shown when no args given or route not found) |
 | `all` | List all todos as an aligned table with datetimes |
 | `fields` | List available fields |
 | `values/<field>` | List values for a field |
