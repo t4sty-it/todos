@@ -1,5 +1,5 @@
 ---
-status: active
+status: closed
 type: actual-task
 tags:
   - untagged
