@@ -250,6 +250,102 @@ describe('create', () => {
   })
 })
 
+describe('<id> history', () => {
+  let gitDir: string
+
+  const runH = async (...args: string[]) => {
+    const proc = Bun.spawn([process.execPath, 'run', CLI, ...args], {
+      cwd: gitDir,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ])
+    return { out: stdout.trim(), err: stderr.trim(), exitCode }
+  }
+
+  const git = async (...args: string[]) => {
+    const proc = Bun.spawn(['git', ...args], { cwd: gitDir, stdout: 'pipe', stderr: 'pipe' })
+    await proc.exited
+  }
+
+  beforeAll(async () => {
+    gitDir = join(tmpdir(), 'todos-history-' + Math.random().toString(36).slice(2))
+    await mkdir(join(gitDir, 'todos'), { recursive: true })
+    await git('init')
+    await git('config', 'user.name', 'Test User')
+    await git('config', 'user.email', 'test@test.com')
+
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await git('add', 'todos/1-fix-login.md')
+    await git('commit', '-m', 'add todo')
+
+    const updated = TODO_1.replace('status: active', 'status: done')
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), updated)
+    await git('add', 'todos/1-fix-login.md')
+    await git('commit', '-m', 'mark done')
+  })
+
+  afterAll(async () => {
+    await rm(gitDir, { recursive: true, force: true })
+  })
+
+  test('exits 0 and shows the author name', async () => {
+    const { out, exitCode } = await runH('1', 'history')
+    expect(exitCode).toBe(0)
+    expect(strip(out)).toContain('Test User')
+  })
+
+  test('shows date in YYYY-MM-DD HH:MM GMT±N format', async () => {
+    const { out } = await runH('1', 'history')
+    expect(strip(out)).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} (UTC|GMT[+-]\d+)/)
+  })
+
+  test('shows all commits newest first', async () => {
+    const { out } = await runH('1', 'history')
+    const clean = strip(out)
+    // Two commits → two header lines
+    expect((clean.match(/Test User/g) ?? []).length).toBe(2)
+    // Newest commit (status: done) appears before oldest (status: active addition)
+    expect(clean.indexOf('+status: done')).toBeLessThan(clean.indexOf('+status: active'))
+  })
+
+  test('highlights additions with a green background', async () => {
+    const { out } = await runH('1', 'history')
+    expect(out).toContain('\x1b[42m')
+  })
+
+  test('highlights removals with a red background', async () => {
+    const { out } = await runH('1', 'history')
+    expect(out).toContain('\x1b[41m')
+  })
+
+  test('indents diff lines 4 spaces', async () => {
+    const { out } = await runH('1', 'history')
+    const clean = strip(out)
+    const diffLines = clean.split('\n').filter(l => /^    \S/.test(l))
+    expect(diffLines.length).toBeGreaterThan(0)
+  })
+
+  test('omits diff file header lines', async () => {
+    const { out } = await runH('1', 'history')
+    const clean = strip(out)
+    expect(clean).not.toContain('diff --git')
+    expect(clean).not.toContain('--- a/')
+    expect(clean).not.toContain('+++ b/')
+  })
+
+  test('reports no history for an untracked file', async () => {
+    await writeFile(join(gitDir, 'todos', '2-untracked.md'), TODO_2)
+    const { out, exitCode } = await runH('2', 'history')
+    expect(exitCode).toBe(0)
+    expect(out).toContain('No history found')
+  })
+})
+
 describe('unrecognised input', () => {
   test('two-token unrecognised path shows help', async () => {
     // A single unknown token always routes to <id> (which then throws "not found").

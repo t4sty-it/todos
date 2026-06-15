@@ -108,12 +108,15 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `<id> tag add <tag>` | Add a tag to a todo (idempotent) |
 | `<id> tag remove <tag>` | Remove a tag from a todo |
 | `<id> set <field> <value>` | Set a field on a todo (`id`, `url`, `createdAt`, `updatedAt` are read-only) |
+| `<id> history` | Show git commit history for a todo with colorized diffs |
 
 Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
 Listing commands (`all`, `with`, `view`, `search`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
 
 **Search** (`search <query>`): reads every todo file in full (bypassing the meta cache, so description is included). Returns two deduped sections concatenated: (1) exact matches — todos whose searchable text (title + description + status + type + tags) contains the query as a literal substring (case-insensitive); (2) fuzzy matches — todos matching a regex built by interleaving each character of the query with `.*` (e.g. `"srch"` → `/s.*r.*c.*h/i`). Special regex characters in the query are escaped before building the pattern. Multi-word queries (e.g. `search hello world`) are passed as a single string, so exact matching looks for the phrase `"hello world"` and fuzzy matching builds the pattern from all characters including the space.
+
+**History** (`<id> history`): runs `git log` to list all commits that touched the todo file, newest first. For each commit, runs `git show --format= --no-color -p` to retrieve the raw patch. `formatHistoryDate` parses the git ISO 8601 author date string and formats it as `YYYY-MM-DD HH:MM GMT±N` using the author's timezone offset. `formatDiff` strips file-header lines (`diff --git`, `index`, `---`, `+++`, `new file`, `deleted file`), indents each remaining line 4 spaces, and applies ANSI background colors — green (`\x1b[42m`) for added lines, red (`\x1b[41m`) for removed lines, dim (`\x1b[2m`) for hunk headers.
 
 ### Utilities
 

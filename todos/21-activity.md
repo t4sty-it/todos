@@ -1,9 +1,8 @@
 ---
-status: ready
+status: done
 type: feature
 tags:
   - untagged
-
 ---
 # history
 

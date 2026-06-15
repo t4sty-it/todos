@@ -20,6 +20,7 @@ todos <id> edit                          # open the todo file in the configured 
 todos <id> tag add <tag>                # add a tag (idempotent)
 todos <id> tag remove <tag>             # remove a tag
 todos <id> set <field> <value>          # update a field on a todo (status, type, title, description, tags)
+todos <id> history                       # show git commit history for a todo with colorized diffs
 todos create <slug>                      # create a new todo (type: task, tags: untagged)
 todos create <type> <slug>              # create with a given type
 todos create <slug> #<tag1,tag2>        # create with given tags (whitespace around commas is trimmed)
@@ -44,6 +45,23 @@ Dates reflect when the file was first committed (`created`) and last committed (
 2. **Fuzzy matches**: todos whose content matches a regex built by interleaving each character of the query with `.*` — e.g. `todos search srch` matches any todo containing `search`, `scratch`, etc.
 
 Exact matches are never repeated in the fuzzy section. Multi-word queries are treated as a single phrase for both exact and fuzzy matching.
+
+### History
+
+`todos <id> history` shows every git commit that touched the todo file, newest first. Each entry includes the commit date (in the author's local timezone), author name, and a colorized diff:
+
+```
+2026-06-15 21:46 GMT+2 - Federico Ceriani
+    @@ -1,5 +1,5 @@
+     ---
+    -status: ready
+    +status: done
+     type: feature
+```
+
+- Lines added are highlighted with a **green background**
+- Lines removed are highlighted with a **red background**
+- Diff hunks are indented 4 spaces; file headers (`diff --git`, `---`, `+++`) are omitted
 
 If running from source: `bun run src/index.ts` in place of `todos`.
 

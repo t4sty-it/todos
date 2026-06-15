@@ -8,6 +8,11 @@ import { doc, helpText, match, ok, param, rest, route, select, terminal, when, t
 const todos = useTodoStore()
 const config = await useConfigStore().get()
 
+const runGit = (args: string[]): Promise<string> => {
+  const proc = Bun.spawn(['git', ...args], { stdout: 'pipe', stderr: 'pipe' })
+  return new Response(proc.stdout).text()
+}
+
 const word = <O>(name: string, child: Router<any, O>) => when((t: string) => !t.startsWith('#'), name, child)
 const tag  = <O>(name: string, child: Router<any, O>) => when((t: string) =>  t.startsWith('#'), name, child)
 const parseTags = (s: string) => s.replace(/^#/, '').split(',').map(t => t.trim())
@@ -91,6 +96,9 @@ const router = select(
 
   param('id',
     select(
+      doc('<id> history', 'Show git history for a todo with diffs',
+        match('history', terminal(r => historyDisplay(r.params['id']!)))
+      ),
       doc('<id> set <field> <value>', 'Set a field on a todo (id/url/createdAt/updatedAt are read-only)',
         match('set',
           param('field',
@@ -175,6 +183,61 @@ async function tableDisplay(todos: Todo[]): Promise<string> {
       config
     )
   ).join('\n')
+}
+
+function formatHistoryDate(isoDate: string): string {
+  const m = isoDate.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}(Z|[+-]\d{2}:\d{2})$/)
+  if (!m) return isoDate
+  const [, date, time, tz] = m
+  let tzStr: string
+  if (tz === 'Z') {
+    tzStr = 'UTC'
+  } else {
+    const tzm = tz!.match(/([+-])(\d{2}):(\d{2})$/)!
+    const h = parseInt(tzm[2]!, 10), mins = parseInt(tzm[3]!, 10)
+    tzStr = `GMT${tzm[1]}${h}${mins ? ':' + tzm[3] : ''}`
+  }
+  return `${date} ${time} ${tzStr}`
+}
+
+function formatDiff(diffText: string): string {
+  const BG_GREEN = '\x1b[42m', BG_RED = '\x1b[41m', DIM = '\x1b[2m', RESET = '\x1b[0m'
+  return diffText.trim().split('\n')
+    .filter(line =>
+      !line.startsWith('diff --git') && !line.startsWith('index ') &&
+      !line.startsWith('--- ') && !line.startsWith('+++ ') &&
+      !line.startsWith('new file') && !line.startsWith('deleted file')
+    )
+    .map(line => {
+      const indent = '    '
+      if (line.startsWith('+')) return `${indent}${BG_GREEN}${line}${RESET}`
+      if (line.startsWith('-')) return `${indent}${BG_RED}${line}${RESET}`
+      if (line.startsWith('@@')) return `${indent}${DIM}${line}${RESET}`
+      return `${indent}${line}`
+    })
+    .join('\n')
+    .trimEnd()
+}
+
+async function historyDisplay(todoId: string): Promise<string> {
+  const todo = await todos.get(todoId)
+  const filePath = `todos/${todo.url}`
+  const logOutput = await runGit(['log', '--format=%H%n%an%n%aI', '--', filePath])
+  const lines = logOutput.trim().split('\n').filter(Boolean)
+  if (lines.length === 0) return 'No history found (file not committed yet).'
+
+  const commits: { hash: string, author: string, isoDate: string }[] = []
+  for (let i = 0; i + 2 < lines.length; i += 3)
+    commits.push({ hash: lines[i]!, author: lines[i + 1]!, isoDate: lines[i + 2]! })
+
+  const sections = await Promise.all(commits.map(async ({ hash, author, isoDate }) => {
+    const header = `${formatHistoryDate(isoDate)} - ${author}`
+    const diffText = await runGit(['show', '--format=', '--no-color', '-p', hash, '--', filePath])
+    const diff = formatDiff(diffText)
+    return diff ? `${header}\n${diff}` : header
+  }))
+
+  return sections.join('\n\n')
 }
 
 const args = process.argv.slice(2)
