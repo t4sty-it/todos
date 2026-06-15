@@ -67,6 +67,8 @@ Cache is invalidated per-file by git blob SHA — stable across checkouts and cl
 
 **views**: Each named view defines a reusable filtered+sorted slice of the todo list, invoked with `view <name>`. `include` conditions are ANDed (todo must match all); `exclude` conditions are ORed (todo is dropped if it matches any). `sort` is a multi-key list where each entry is `"<field>"` or `"<field> asc|desc"` (defaults to `asc`).
 
+**JSON Schema**: `todosConfig.schema.json` at the repo root describes all supported fields. `.vscode/settings.json` maps it to `todosConfig.json` so VS Code shows hints without requiring a `$schema` field in the config. The schema's `$id` is set to `https://json.schemastore.org/todos-config.json` for future SchemaStore submission.
+
 ### Router (`src/utils/router.ts`)
 
 A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Result<O>>` where `Result` is either `Ok<O>` or `RouteNotFound`. Key combinators:

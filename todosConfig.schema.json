@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json.schemastore.org/todos-config.json",
+  "title": "todos CLI Configuration",
+  "description": "Configuration for the todos CLI tool (todosConfig.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "editor": {
+      "type": "string",
+      "description": "Command used to open todo files. Falls back to $EDITOR if absent. Multi-word commands are split on whitespace before spawning.",
+      "examples": ["nvim", "hx", "nano", "code --wait", "subl -w"]
+    },
+    "display": {
+      "type": "object",
+      "description": "Style rules for table output. Each key is a field name; its value maps field values to space-separated style tokens.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Maps field values to style strings. Use an empty string as the key to style todos where the field is absent or empty.",
+        "additionalProperties": {
+          "type": "string",
+          "description": "Space-separated style tokens. Modifiers: bold dim italic underline. Colors: black red green yellow blue magenta cyan white gray grey.",
+          "examples": [
+            "bold",
+            "dim",
+            "italic",
+            "bold green",
+            "gray",
+            "bold red",
+            "italic blue",
+            "underline yellow",
+            "bold magenta"
+          ]
+        }
+      }
+    },
+    "views": {
+      "type": "object",
+      "description": "Named views — reusable filtered and sorted todo slices, invoked with `todos view <name>`.",
+      "additionalProperties": {
+        "$ref": "#/$defs/view"
+      }
+    }
+  },
+  "$defs": {
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Todos must match ALL conditions to appear (conditions are ANDed).",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Todos matching ANY condition are hidden (conditions are ORed).",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "sort": {
+          "type": "array",
+          "description": "Multi-key sort order. Each entry is a field name optionally followed by 'asc' or 'desc' (default asc).",
+          "items": {
+            "type": "string",
+            "description": "Field name optionally followed by sort direction",
+            "examples": [
+              "status",
+              "type asc",
+              "createdAt desc",
+              "id desc",
+              "updatedAt desc"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "A single field=value filter. The key is a field name and the value is the string to match against.",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": { "type": "string" },
+      "examples": [
+        { "status": "active" },
+        { "type": "bug" },
+        { "status": "closed" }
+      ]
+    }
+  }
+}
