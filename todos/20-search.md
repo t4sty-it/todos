@@ -1,9 +1,8 @@
 ---
-status: ready
+status: done
 type: actual-feature
 tags:
   - untagged
-
 ---
 # search
 

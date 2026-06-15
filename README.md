@@ -14,6 +14,7 @@ todos fields                             # list available fields
 todos values <field>                     # list all values for a field
 todos with <field> <value>              # filter todos by field value
 todos with <field> ""                    # filter todos where the field is absent or empty
+todos search <query>                     # search todos by content (exact matches first, then fuzzy)
 todos <id>                               # show full detail for a single todo
 todos <id> edit                          # open the todo file in the configured editor
 todos <id> tag add <tag>                # add a tag (idempotent)
@@ -25,7 +26,7 @@ todos create <slug> #<tag1,tag2>        # create with given tags (whitespace aro
 todos create <type> <slug> #<tag1,tag2> # create with type and tags
 ```
 
-Listing commands (`all`, `with`, `view`) output an aligned table:
+Listing commands (`all`, `with`, `view`, `search`) output an aligned table:
 
 ```
 #1   fix login bug        2025-10-01 09:30 → 2026-06-10 14:22
@@ -34,6 +35,15 @@ Listing commands (`all`, `with`, `view`) output an aligned table:
 ```
 
 Dates reflect when the file was first committed (`created`) and last committed (`updated`), derived from git history. They are cached in `.todos/meta.json` — add `.todos/` to your `.gitignore`.
+
+### Search
+
+`todos search <query>` searches across all todo content — title, description, status, type, and tags — and returns two sets of results concatenated:
+
+1. **Exact matches**: todos whose content contains the query as a literal substring (case-insensitive)
+2. **Fuzzy matches**: todos whose content matches a regex built by interleaving each character of the query with `.*` — e.g. `todos search srch` matches any todo containing `search`, `scratch`, etc.
+
+Exact matches are never repeated in the fuzzy section. Multi-word queries are treated as a single phrase for both exact and fuzzy matching.
 
 If running from source: `bun run src/index.ts` in place of `todos`.
 

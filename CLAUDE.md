@@ -18,7 +18,7 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 ### Data layer
 
 - `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store; exports `parseTitle`
-- `src/todoStore.ts` — the active store; exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`). **Listing operations** (`all`, `fields`, `fieldValues`, `filterBy`, `view`) are served from the meta cache without reading any todo files. `get(id)` reads one file for `description` and re-attaches date thunks from the listing. Write operations (`tag`, `set`) mutate the in-memory meta cache Map in-place so the listing stays consistent across the internal todos-cache reset. `reload()` resets both the todos cache and the meta cache.
+- `src/todoStore.ts` — the active store; exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `search(query)`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`). **Listing operations** (`all`, `fields`, `fieldValues`, `filterBy`, `view`) are served from the meta cache without reading any todo files. `get(id)` reads one file for `description` and re-attaches date thunks from the listing. `search(query)` reads all files to include description in matching (see below). Write operations (`tag`, `set`) mutate the in-memory meta cache Map in-place so the listing stays consistent across the internal todos-cache reset. `reload()` resets both the todos cache and the meta cache.
 - `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, reads file content and fetches `git log` dates for stale files, then writes the updated cache; exposed as `loadMetaCache()` (memoized, resettable via `resetMetaCache()`); entries with missing or invalid dates are silently omitted from the returned Map
 
 `.todos/meta.json` schema:
@@ -77,6 +77,7 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 | `match(token, child)` | Matches a literal path segment, advances to `child` |
 | `param(name, child)` | Captures the next path segment as a named param, advances to `child`; implements `Doc` by delegating to child |
 | `when(pred, name, child)` | Like `param`, but only captures if the token satisfies `pred` (and is not EOP) |
+| `rest(name, child)` | Captures all remaining tokens before EOP as a single space-joined param, then advances to `[EOP]`; used for variadic arguments like `search <query>` |
 | `terminal(cb)` | Succeeds only when the next token is EOP; calls `cb` and wraps result in `ok` |
 | `route(path, value)` | Constructs a `Route` by splitting `path` on `/` into tokens |
 | `ok` / `routeNotFound` | Result constructors |
@@ -85,7 +86,7 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 
 ### Entry point (`src/index.ts`)
 
-Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`terminal`/`doc`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Passing no arguments, `--help`, or `-h` (or an unrecognised route) prints help via `helpText(router)`. Routes:
+Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`rest`/`terminal`/`doc`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Passing no arguments, `--help`, or `-h` (or an unrecognised route) prints help via `helpText(router)`. Routes:
 
 | Command | Description |
 |---------|-------------|
@@ -95,6 +96,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 | `values/<field>` | List values for a field |
 | `with/<field>/<value>` | Filter todos by field value, table format; empty string matches absent/empty fields |
 | `view/<name>` | Apply a named view from config, table format |
+| `search <query>` | Search todos by content; exact matches first, then fuzzy |
 | `create <slug>` | Create a todo (type defaults to `task`) |
 | `create <type> <slug>` | Create a todo with a given type |
 | `create <slug> #<tags>` | Create a todo with comma-separated tags |
@@ -107,7 +109,9 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`w
 
 Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
-Listing commands (`all`, `with`, `view`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
+Listing commands (`all`, `with`, `view`, `search`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
+
+**Search** (`search <query>`): reads every todo file in full (bypassing the meta cache, so description is included). Returns two deduped sections concatenated: (1) exact matches — todos whose searchable text (title + description + status + type + tags) contains the query as a literal substring (case-insensitive); (2) fuzzy matches — todos matching a regex built by interleaving each character of the query with `.*` (e.g. `"srch"` → `/s.*r.*c.*h/i`). Special regex characters in the query are escaped before building the pattern. Multi-word queries (e.g. `search hello world`) are passed as a single string, so exact matching looks for the phrase `"hello world"` and fuzzy matching builds the pattern from all characters including the space.
 
 ### Utilities
 

@@ -10,6 +10,7 @@ export interface TodoStore {
   fields(): Promise<(keyof Todo)[]>,
   fieldValues(field: keyof Todo): Promise<string[]>,
   filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
+  search(query: string): Promise<Todo[]>,
   get(id: string): Promise<Todo>,
   reload(): void,
   tag(id: string, op: 'add' | 'remove', tag: string): Promise<Todo>,
@@ -74,6 +75,37 @@ export const useTodoStore = (): TodoStore => {
       await writeFile(`${mainFolder}/${url}`, stringify(todo))
       todos = useCache(() => buildListing(mainFolder))
       return todo
+    },
+    search: async (query: string) => {
+      const listing = await todos()
+      const withContent = await Promise.all(
+        listing.map(async todo => {
+          const text = await Bun.file(`${mainFolder}/${todo.url}`).text()
+          const full = parse(text, todo.url)
+          full.createdAt = todo.createdAt
+          full.updatedAt = todo.updatedAt
+          return full
+        })
+      )
+
+      const searchText = (todo: Todo) => [
+        todo.title,
+        todo.description ?? '',
+        todo.status ?? '',
+        todo.type ?? '',
+        ...(todo.tags ?? [])
+      ].join(' ')
+
+      const exact = withContent.filter(t => searchText(t).toLowerCase().includes(query.toLowerCase()))
+      const exactIds = new Set(exact.map(t => t.id))
+
+      const fuzzyPattern = new RegExp(
+        query.toLowerCase().split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*'),
+        'i'
+      )
+      const fuzzy = withContent.filter(t => !exactIds.has(t.id) && fuzzyPattern.test(searchText(t)))
+
+      return [...exact, ...fuzzy]
     },
     get: async id => {
       const listing = (await todos()).find(t => t.id === id)

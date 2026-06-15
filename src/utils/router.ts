@@ -98,3 +98,18 @@ r => {
 
 export const terminal = <I, O>(cb: (r: Route<I>) => PromiseOr<O>): Router<Route<I>, O> =>
 async r => r.tokens[0] === EOP ? ok(await cb(r)) : routeNotFound('404')
+
+export const rest = <I, O>(name: string, child: Router<Route<I>, O>): Router<Route<I>, O> & Doc => {
+  const fn = (r: Route<I>) => {
+    const eop = r.tokens.indexOf(EOP)
+    const remaining = r.tokens.slice(0, eop < 0 ? r.tokens.length : eop)
+    return child({
+      ...r,
+      tokens: [EOP],
+      params: {...r.params, [name]: remaining.join(' ')}
+    })
+  }
+  return Object.assign(fn, {
+    document: () => 'document' in child ? (child as Doc).document() : ''
+  })
+}

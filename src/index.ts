@@ -3,7 +3,7 @@ import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
 import { applyDisplay } from "./config"
 import { useConfigStore } from "./configStore"
-import { doc, helpText, match, ok, param, route, select, terminal, when, type Router } from "./utils/router"
+import { doc, helpText, match, ok, param, rest, route, select, terminal, when, type Router } from "./utils/router"
 
 const todos = useTodoStore()
 const config = await useConfigStore().get()
@@ -63,6 +63,18 @@ const router = select(
           return todos.view(view)
             .then(tableDisplay)
             .then(ok)
+        }
+      )
+    )
+  ),
+
+  doc('search <query>', 'Search todos by content (exact matches first, then fuzzy)',
+    match('search',
+      rest('query',
+        r => {
+          const q = r.params['query']!
+          if (!q) return ok('Usage: todos search <query>')
+          return todos.search(q).then(tableDisplay).then(ok)
         }
       )
     )
