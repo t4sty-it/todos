@@ -1,6 +1,6 @@
 ---
 status: confirmed
-type: bug
+type: test-bug
 tags: []
 ---
 # some open bug

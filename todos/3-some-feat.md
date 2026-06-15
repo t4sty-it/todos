@@ -1,6 +1,6 @@
 ---
 status: new
-type: feature
+type: test-feature
 tags:
   - backend
 ---

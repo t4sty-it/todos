@@ -1,6 +1,6 @@
 ---
 status: new
-type: bug
+type: test-bug
 tags:
   - untagged
 

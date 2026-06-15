@@ -1,5 +1,5 @@
 ---
-type: bug
+type: test-bug
 status: closed
 tags:
   - FE

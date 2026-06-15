@@ -1,5 +1,5 @@
 ---
-type: feature
+type: test-feature
 status: closed
 tags: FE, BE
 ---

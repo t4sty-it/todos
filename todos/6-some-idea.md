@@ -1,6 +1,6 @@
 ---
 status: new
-type: feat
+type: test-feat
 tags:
   - untagged
 

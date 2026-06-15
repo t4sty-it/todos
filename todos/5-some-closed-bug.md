@@ -1,6 +1,6 @@
 ---
 status: closed
-type: bug
+type: test-bug
 tags:
   - untagged
 
