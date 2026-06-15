@@ -112,3 +112,17 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
 let _cache = useCache(buildMetaCache)
 export const loadMetaCache = () => _cache()
 export const resetMetaCache = () => { _cache = useCache(buildMetaCache) }
+
+type MetaCachePatch = Partial<Pick<MetaMapEntry, 'title' | 'status' | 'type' | 'tags'>>
+
+export const patchMetaCacheEntry = async (filename: string, updates: MetaCachePatch) => {
+  const map = await loadMetaCache()
+  const mapEntry = map.get(filename)
+  if (mapEntry) Object.assign(mapEntry, updates)
+
+  const stored = await readMetaStore()
+  if (stored[filename]) {
+    Object.assign(stored[filename], updates)
+    await writeFile(cachePath, JSON.stringify(stored, null, 2))
+  }
+}

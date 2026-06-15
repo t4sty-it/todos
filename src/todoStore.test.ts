@@ -1,8 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
+import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { useTodoStore } from './todoStore'
+import { resetMetaCache } from './metaCache'
 
 const TODO_1 = `---\nstatus: active\ntype: bug\ntags:\n  - FE\n---\n# Fix login\n\nBug description.\n`
 const TODO_2 = `---\nstatus: new\ntype: feature\ntags:\n  - BE\n  - untagged\n---\n# Add export\n`
@@ -240,5 +241,70 @@ describe('reload', () => {
     store.reload()
     const all = await store.all()
     expect(all.some(t => t.id === '9')).toBe(true)
+  })
+})
+
+describe('mutation survives reload with git-backed meta cache', () => {
+  let gitDir: string
+  let prevCwd: string
+
+  const git = async (...args: string[]) => {
+    const proc = Bun.spawn(['git', ...args], { cwd: gitDir, stdout: 'pipe', stderr: 'pipe' })
+    await proc.exited
+  }
+
+  beforeAll(async () => {
+    // Set up git repo but DON'T chdir here — Bun runs all beforeAll hooks before
+    // any tests, so changing cwd here would break earlier tests in this file.
+    gitDir = join(tmpdir(), 'todos-git-test-' + Math.random().toString(36).slice(2))
+    await mkdir(join(gitDir, 'todos'), { recursive: true })
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-add-export.md'), TODO_2)
+    await writeFile(join(gitDir, 'todos', '3-dark-mode.md'), TODO_3)
+    await git('init')
+    await git('config', 'user.name', 'Test User')
+    await git('config', 'user.email', 'test@test.com')
+    await git('add', 'todos/')
+    await git('commit', '-m', 'initial')
+  })
+
+  afterAll(async () => {
+    await rm(gitDir, { recursive: true, force: true })
+  })
+
+  beforeEach(async () => {
+    await rm(join(gitDir, 'todos'), { recursive: true, force: true })
+    await mkdir(join(gitDir, 'todos'), { recursive: true })
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-add-export.md'), TODO_2)
+    await writeFile(join(gitDir, 'todos', '3-dark-mode.md'), TODO_3)
+    await rm(join(gitDir, '.todos'), { recursive: true, force: true })
+    resetMetaCache()
+    prevCwd = process.cwd()
+    process.chdir(gitDir)
+  })
+
+  afterEach(async () => {
+    process.chdir(prevCwd)
+  })
+
+  test('set() change is visible in all() listing after reload', async () => {
+    const store = useTodoStore()
+    await store.all() // warms meta cache; reads git SHAs and writes .todos/meta.json
+    await store.set('3', 'status', 'closed')
+    store.reload()
+    const all = await store.all()
+    const todo3 = all.find(t => t.id === '3')
+    expect(todo3!.status).toBe('closed')
+  })
+
+  test('tag() change is visible in all() listing after reload', async () => {
+    const store = useTodoStore()
+    await store.all()
+    await store.tag('1', 'add', 'backend')
+    store.reload()
+    const all = await store.all()
+    const todo1 = all.find(t => t.id === '1')
+    expect(todo1!.tags).toContain('backend')
   })
 })

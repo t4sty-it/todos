@@ -3,7 +3,7 @@ import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
-import { loadMetaCache, resetMetaCache } from "./metaCache";
+import { loadMetaCache, resetMetaCache, patchMetaCacheEntry } from "./metaCache";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
@@ -134,9 +134,7 @@ export const useTodoStore = (): TodoStore => {
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, 'tags', newTags))
 
-      const meta = await loadMetaCache()
-      const entry = meta.get(todo.url)
-      if (entry) entry.tags = newTags
+      await patchMetaCacheEntry(todo.url, { tags: newTags })
 
       todos = useCache(() => buildListing(mainFolder))
       return { ...todo, tags: newTags }
@@ -156,13 +154,10 @@ export const useTodoStore = (): TodoStore => {
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, field, value))
 
-      const meta = await loadMetaCache()
-      const entry = meta.get(todo.url)
-      if (entry) {
-        if (field === 'title') entry.title = value
-        else if (field === 'status') entry.status = value
-        else if (field === 'type') entry.type = value
-      }
+      if (field === 'title') await patchMetaCacheEntry(todo.url, { title: value })
+      else if (field === 'status') await patchMetaCacheEntry(todo.url, { status: value })
+      else if (field === 'type') await patchMetaCacheEntry(todo.url, { type: value })
+      else if (field === 'tags') await patchMetaCacheEntry(todo.url, { tags: value.split(',').map(s => s.trim()) })
 
       todos = useCache(() => buildListing(mainFolder))
       return { ...todo, [field]: value }
