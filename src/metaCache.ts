@@ -1,13 +1,32 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { useCache } from './utils/useCache'
+import { parse } from './todos'
+
+const SCHEMA_VERSION = 1
 
 interface MetaEntry {
   blobSha: string
+  schemaVersion: number
   createdAt: string
   updatedAt: string
+  slug: string
+  title: string
+  status?: string
+  type?: string
+  tags?: string[]
 }
 
 type MetaStore = Record<string, MetaEntry>
+
+export type MetaMapEntry = {
+  createdAt: Date
+  updatedAt: Date
+  slug: string
+  title: string
+  status?: string
+  type?: string
+  tags?: string[]
+}
 
 const cacheDir = '.todos'
 const cachePath = `${cacheDir}/meta.json`
@@ -38,40 +57,58 @@ const fetchBlobShas = async (): Promise<Map<string, string>> => {
   return map
 }
 
-const buildMetaCache = async (): Promise<Map<string, { createdAt: Date, updatedAt: Date }>> => {
+const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
   const [stored, blobShas] = await Promise.all([readMetaStore(), fetchBlobShas()])
 
   const stale = [...blobShas.entries()]
-    .filter(([filename, sha]) => stored[filename]?.blobSha !== sha)
+    .filter(([filename, sha]) => {
+      const entry = stored[filename]
+      return !entry || entry.blobSha !== sha || entry.schemaVersion !== SCHEMA_VERSION
+    })
     .map(([filename]) => filename)
 
   if (stale.length > 0) {
     const updates = await Promise.all(
       stale.map(async filename => {
         const filepath = `todos/${filename}`
-        const [createdAt, updatedAt] = await Promise.all([
+        const [text, createdAt, updatedAt] = await Promise.all([
+          Bun.file(filepath).text(),
           runGit(['log', '--diff-filter=A', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
           runGit(['log', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
         ])
-        return { filename, blobSha: blobShas.get(filename)!, createdAt, updatedAt }
+        const { title, status, type, tags } = parse(text, filename)
+        return {
+          filename,
+          blobSha: blobShas.get(filename)!,
+          schemaVersion: SCHEMA_VERSION,
+          createdAt, updatedAt,
+          slug: filename.split('-')[0]!,
+          title, status, type, tags,
+        }
       })
     )
-    for (const { filename, blobSha, createdAt, updatedAt } of updates) {
-      stored[filename] = { blobSha, createdAt, updatedAt }
+    for (const { filename, ...entry } of updates) {
+      stored[filename] = entry
     }
     await mkdir(cacheDir, { recursive: true })
     await writeFile(cachePath, JSON.stringify(stored, null, 2))
   }
 
-  const result = new Map<string, { createdAt: Date, updatedAt: Date }>()
+  const result = new Map<string, MetaMapEntry>()
   for (const [filename, entry] of Object.entries(stored)) {
     const createdAt = entry.createdAt ? new Date(entry.createdAt) : undefined
     const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : undefined
     if (createdAt && updatedAt && !isNaN(createdAt.getTime()) && !isNaN(updatedAt.getTime())) {
-      result.set(filename, { createdAt, updatedAt })
+      result.set(filename, {
+        createdAt, updatedAt,
+        slug: entry.slug, title: entry.title,
+        status: entry.status, type: entry.type, tags: entry.tags,
+      })
     }
   }
   return result
 }
 
-export const loadMetaCache = useCache(buildMetaCache)
+let _cache = useCache(buildMetaCache)
+export const loadMetaCache = () => _cache()
+export const resetMetaCache = () => { _cache = useCache(buildMetaCache) }

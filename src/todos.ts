@@ -38,7 +38,7 @@ const parseFrontMatter = (text: string): Partial<{status: string, type: string, 
   return obj
 }
 
-const parseTitle = (text: string) => titleRegex.exec(text)?.at(1) ?? ''
+export const parseTitle = (text: string) => titleRegex.exec(text)?.at(1) ?? ''
 const parseDescription = (text: string) => {
   const lines = text.split('\n')
   const titleLineIdx = lines.findIndex(line => line.startsWith('# '))

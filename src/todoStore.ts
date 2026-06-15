@@ -3,7 +3,7 @@ import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
 import { useCache } from "./utils/useCache";
-import { loadMetaCache } from "./metaCache";
+import { loadMetaCache, resetMetaCache } from "./metaCache";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
@@ -22,7 +22,7 @@ const mainFolder = 'todos'
 
 export const useTodoStore = (): TodoStore => {
 
-  let todos = useCache(() => listFolder(mainFolder))
+  let todos = useCache(() => buildListing(mainFolder))
 
   return {
     all: () => todos(),
@@ -72,15 +72,22 @@ export const useTodoStore = (): TodoStore => {
       const title = slug.replace(/-/g, ' ')
       const todo: Todo = { id: newId, url, title, status: 'new', type, tags }
       await writeFile(`${mainFolder}/${url}`, stringify(todo))
-      todos = useCache(() => listFolder(mainFolder))
+      todos = useCache(() => buildListing(mainFolder))
       return todo
     },
     get: async id => {
-      const todo = (await todos()).find(t => t.id === id)
-      if (!todo) throw new Error(`Todo not found: ${id}`)
+      const listing = (await todos()).find(t => t.id === id)
+      if (!listing) throw new Error(`Todo not found: ${id}`)
+      const text = await Bun.file(`${mainFolder}/${listing.url}`).text()
+      const todo = parse(text, listing.url)
+      todo.createdAt = listing.createdAt
+      todo.updatedAt = listing.updatedAt
       return todo
     },
-    reload: () => { todos = useCache(() => listFolder(mainFolder)) },
+    reload: () => {
+      todos = useCache(() => buildListing(mainFolder))
+      resetMetaCache()
+    },
     tag: async (id, op, tagName) => {
       const all = await todos()
       const todo = all.find(t => t.id === id)
@@ -94,7 +101,12 @@ export const useTodoStore = (): TodoStore => {
       const filePath = `${mainFolder}/${todo.url}`
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, 'tags', newTags))
-      todos = useCache(() => listFolder(mainFolder))
+
+      const meta = await loadMetaCache()
+      const entry = meta.get(todo.url)
+      if (entry) entry.tags = newTags
+
+      todos = useCache(() => buildListing(mainFolder))
       return { ...todo, tags: newTags }
     },
     view: async (viewConfig) => {
@@ -111,24 +123,45 @@ export const useTodoStore = (): TodoStore => {
       const filePath = `${mainFolder}/${todo.url}`
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, field, value))
-      todos = useCache(() => listFolder(mainFolder))
+
+      const meta = await loadMetaCache()
+      const entry = meta.get(todo.url)
+      if (entry) {
+        if (field === 'title') entry.title = value
+        else if (field === 'status') entry.status = value
+        else if (field === 'type') entry.type = value
+      }
+
+      todos = useCache(() => buildListing(mainFolder))
       return { ...todo, [field]: value }
     }
   }
 }
 
-const listFolder = async (folderPath: string): Promise<Todo[]> => {
-  const files = await readdir(folderPath)
+const buildListing = async (folderPath: string): Promise<Todo[]> => {
+  const [files, meta] = await Promise.all([readdir(folderPath), loadMetaCache()])
 
   return Promise.all(
-    files.map(f =>
-      Bun.file(`${folderPath}/${f}`).text()
-        .then(text => {
-          const todo = parse(text, f)
-          todo.createdAt = () => loadMetaCache().then(m => m.get(f)?.createdAt)
-          todo.updatedAt = () => loadMetaCache().then(m => m.get(f)?.updatedAt)
-          return todo
-        })
-    )
+    files.map(async f => {
+      const cached = meta.get(f)
+      if (cached) {
+        return {
+          id: cached.slug,
+          url: f,
+          title: cached.title,
+          status: cached.status,
+          type: cached.type,
+          tags: cached.tags,
+          createdAt: () => Promise.resolve(cached.createdAt),
+          updatedAt: () => Promise.resolve(cached.updatedAt),
+        } satisfies Todo
+      }
+      // Fallback for untracked files not yet in the cache
+      const text = await Bun.file(`${folderPath}/${f}`).text()
+      const todo = parse(text, f)
+      todo.createdAt = () => loadMetaCache().then(m => m.get(f)?.createdAt)
+      todo.updatedAt = () => loadMetaCache().then(m => m.get(f)?.updatedAt)
+      return todo
+    })
   )
 }

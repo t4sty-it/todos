@@ -17,15 +17,27 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 
 ### Data layer
 
-- `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store
-- `src/todoStore.ts` — the active store; reads `todos/` at startup via `useCache`, exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; attaches `createdAt`/`updatedAt` thunks to each todo loaded from disk; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`)
-- `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, fetches `git log` dates only for files whose SHA changed since the last run, then writes the updated cache; exposed as `loadMetaCache()` (memoized via `useCache`); entries with missing or invalid dates are silently omitted
+- `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store; exports `parseTitle`
+- `src/todoStore.ts` — the active store; exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`). **Listing operations** (`all`, `fields`, `fieldValues`, `filterBy`, `view`) are served from the meta cache without reading any todo files. `get(id)` reads one file for `description` and re-attaches date thunks from the listing. Write operations (`tag`, `set`) mutate the in-memory meta cache Map in-place so the listing stays consistent across the internal todos-cache reset. `reload()` resets both the todos cache and the meta cache.
+- `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, reads file content and fetches `git log` dates for stale files, then writes the updated cache; exposed as `loadMetaCache()` (memoized, resettable via `resetMetaCache()`); entries with missing or invalid dates are silently omitted from the returned Map
 
 `.todos/meta.json` schema:
 ```json
-{ "<filename>.md": { "blobSha": "<sha>", "createdAt": "<ISO 8601>", "updatedAt": "<ISO 8601>" } }
+{
+  "<filename>.md": {
+    "blobSha": "<sha>",
+    "schemaVersion": 1,
+    "createdAt": "<ISO 8601>",
+    "updatedAt": "<ISO 8601>",
+    "slug": "<id>",
+    "title": "<title>",
+    "status": "<status>",
+    "type": "<type>",
+    "tags": ["<tag>"]
+  }
+}
 ```
-Cache is invalidated per-file by git blob SHA — stable across checkouts and clones, unlike mtime. The `.todos/` directory should be added to `.gitignore`.
+Cache is invalidated per-file by git blob SHA — stable across checkouts and clones, unlike mtime. `schemaVersion` guards against stale entries that predate new fields (increment it when adding fields). Untracked files (not yet committed) are not in the cache; the store falls back to reading those from disk. The `.todos/` directory should be added to `.gitignore`.
 
 ### Config layer
 
