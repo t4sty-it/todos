@@ -346,6 +346,26 @@ describe('<id> history', () => {
   })
 })
 
+describe('search', () => {
+  test('finds a todo by title substring', async () => {
+    const { out, exitCode } = await run('search', 'Fix')
+    expect(exitCode).toBe(0)
+    expect(strip(out)).toContain('Fix login')
+  })
+
+  test('returns empty output for a non-matching query', async () => {
+    const { out, exitCode } = await run('search', 'zzznomatch')
+    expect(exitCode).toBe(0)
+    expect(strip(out)).toBe('')
+  })
+
+  test('empty query shows a usage hint', async () => {
+    const { out, exitCode } = await run('search')
+    expect(exitCode).toBe(0)
+    expect(out).toContain('Usage')
+  })
+})
+
 describe('unrecognised input', () => {
   test('two-token unrecognised path shows help', async () => {
     // A single unknown token always routes to <id> (which then throws "not found").

@@ -195,6 +195,42 @@ describe('view', () => {
   })
 })
 
+describe('search', () => {
+  test('returns todos whose title matches exactly (case-insensitive)', async () => {
+    const results = await useTodoStore().search('Fix login')
+    expect(results.some(t => t.id === '1')).toBe(true)
+  })
+
+  test('returns todos whose description matches', async () => {
+    const results = await useTodoStore().search('Bug description')
+    expect(results.some(t => t.id === '1')).toBe(true)
+  })
+
+  test('fuzzy match returns a todo not in the exact results', async () => {
+    // 'fxlgn' fuzzy-matches 'Fix login' but is not a substring
+    const results = await useTodoStore().search('fxlgn')
+    expect(results.some(t => t.id === '1')).toBe(true)
+  })
+
+  test('exact matches are not duplicated in the fuzzy section', async () => {
+    // 'Fix' is an exact substring; todo 1 should appear exactly once
+    const results = await useTodoStore().search('Fix')
+    const matchingId1 = results.filter(t => t.id === '1')
+    expect(matchingId1).toHaveLength(1)
+  })
+
+  test('special regex chars in query are escaped', async () => {
+    // 'fix.login' with a literal dot should NOT match 'fix login' (space ≠ dot)
+    const results = await useTodoStore().search('fix.login')
+    expect(results.some(t => t.id === '1')).toBe(false)
+  })
+
+  test('multi-word query matches as an exact phrase', async () => {
+    const results = await useTodoStore().search('Bug desc')
+    expect(results.some(t => t.id === '1')).toBe(true)
+  })
+})
+
 describe('reload', () => {
   test('picks up a file written externally after the cache was populated', async () => {
     const store = useTodoStore()
