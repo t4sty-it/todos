@@ -8,5 +8,5 @@ export const prompt = async (msg: string, separator: string = '\n> '): Promise<s
     return line
   }
 
-  throw 'Could not read from console'
+  throw new Error('Could not read from console')
 }
