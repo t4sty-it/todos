@@ -77,17 +77,14 @@ const compareValues = (a: string, b: string): number => {
   return a.localeCompare(b)
 }
 
-export const applyView = (
-  items: Record<string, unknown>[],
-  view: View
-): Record<string, unknown>[] => {
+export const applyView = <T extends object>(items: T[], view: View): T[] => {
   let result = items
 
   if (view.include && view.include.length > 0) {
     result = result.filter(item =>
       view.include!.every(condition => {
         const [field, expected] = Object.entries(condition)[0]!
-        const actual = item[field]
+        const actual = (item as Record<string, unknown>)[field]
         if (Array.isArray(actual)) return actual.includes(expected)
         return actual === expected
       })
@@ -98,7 +95,7 @@ export const applyView = (
     result = result.filter(item =>
       !view.exclude!.some(condition => {
         const [field, expected] = Object.entries(condition)[0]!
-        const actual = item[field]
+        const actual = (item as Record<string, unknown>)[field]
         if (Array.isArray(actual)) return actual.includes(expected)
         return actual === expected
       })
@@ -110,7 +107,10 @@ export const applyView = (
       for (const entry of view.sort!) {
         const [field, dir] = entry.trim().split(/\s+/)
         const direction = dir?.toLowerCase() === 'desc' ? -1 : 1
-        const cmp = compareValues(String(a[field!] ?? ''), String(b[field!] ?? ''))
+        const cmp = compareValues(
+          String((a as Record<string, unknown>)[field!] ?? ''),
+          String((b as Record<string, unknown>)[field!] ?? ''),
+        )
         if (cmp !== 0) return cmp * direction
       }
       return 0

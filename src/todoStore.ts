@@ -141,7 +141,7 @@ export const useTodoStore = (): TodoStore => {
     },
     view: async (viewConfig) => {
       const all = await todos()
-      return applyView(all as unknown as Record<string, unknown>[], viewConfig) as unknown as Todo[]
+      return applyView(all, viewConfig)
     },
     set: async (id, field, value) => {
       const readonlyFields: (keyof Todo)[] = ['id', 'url', 'createdAt', 'updatedAt']
