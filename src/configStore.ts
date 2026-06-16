@@ -1,4 +1,4 @@
-import { emptyConfig, type Config } from './config'
+import { emptyConfig, validateConfig, type Config } from './config'
 import { useCache } from './utils/useCache'
 
 export interface ConfigStore {
@@ -16,7 +16,7 @@ const loadConfig = async (): Promise<Config> => {
   const file = Bun.file(configFile)
   if (!await file.exists()) return emptyConfig
   try {
-    return JSON.parse(await file.text()) as Config
+    return validateConfig(JSON.parse(await file.text()))
   } catch (e) {
     process.stderr.write(`Warning: failed to parse ${configFile}: ${e}\n`)
     return emptyConfig

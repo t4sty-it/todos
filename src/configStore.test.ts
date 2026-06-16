@@ -56,6 +56,42 @@ describe('useConfigStore', () => {
     }
   })
 
+  test('returns empty config and warns when editor is not a string', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), JSON.stringify({ editor: 123 }))
+    const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const config = await useConfigStore().get()
+      expect(config.editor).toBeUndefined()
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('Warning'))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  test('returns empty config and warns when a display style value is not a string', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), JSON.stringify({ display: { status: { done: 99 } } }))
+    const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const config = await useConfigStore().get()
+      expect(config.display).toBeUndefined()
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('Warning'))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  test('returns empty config and warns when a view sort is not an array', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), JSON.stringify({ views: { active: { sort: 'not-an-array' } } }))
+    const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const config = await useConfigStore().get()
+      expect(config.views).toBeUndefined()
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('Warning'))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   test('each call to useConfigStore creates an independent memoized cache', async () => {
     await writeFile(join(tmpDir, 'todosConfig.json'), JSON.stringify({ editor: 'vim' }))
     const store1 = useConfigStore()

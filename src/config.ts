@@ -18,6 +18,16 @@ export interface Config {
 
 export const emptyConfig: Config = {}
 
+import Ajv from 'ajv'
+import schema from '../todosConfig.schema.json'
+
+const validate = new Ajv({ strict: false }).compile(schema)
+
+export const validateConfig = (raw: unknown): Config => {
+  if (!validate(raw)) throw new Error(validate.errors!.map(e => `${e.instancePath} ${e.message}`).join('; '))
+  return raw as Config
+}
+
 const ansiCodes: Record<string, string> = {
   bold:      '\x1b[1m',
   dim:       '\x1b[2m',
