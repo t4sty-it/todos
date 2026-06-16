@@ -307,4 +307,14 @@ describe('mutation survives reload with git-backed meta cache', () => {
     const todo1 = all.find(t => t.id === '1')
     expect(todo1!.tags).toContain('backend')
   })
+
+  test('set() type change is visible in all() listing after reload', async () => {
+    const store = useTodoStore()
+    await store.all()
+    await store.set('1', 'type', 'chore')
+    store.reload()
+    const all = await store.all()
+    const todo1 = all.find(t => t.id === '1')
+    expect(todo1!.type).toBe('chore')
+  })
 })
