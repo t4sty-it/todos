@@ -76,6 +76,9 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
           runGit(['log', '--diff-filter=A', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
           runGit(['log', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
         ])
+        if (!createdAt || !updatedAt) {
+          process.stderr.write(`Warning: no git dates found for ${filename} (may not be committed yet); it will be excluded from listings\n`)
+        }
         const { title, status, type, tags } = parse(text, filename)
         return {
           filename,
@@ -104,6 +107,8 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
         slug: entry.slug, title: entry.title,
         status: entry.status, type: entry.type, tags: entry.tags,
       })
+    } else if (blobShas.has(filename)) {
+      process.stderr.write(`Warning: ${filename} has invalid dates in cache; it will be excluded from listings\n`)
     }
   }
   return result
