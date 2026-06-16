@@ -1,12 +1,4 @@
-export const useCache = <T>(builder: () => T) => {
-  let cache: T | undefined = undefined
-  let built = false
-
-  return () => {
-    if (!built) {
-      built = true
-      cache = builder()
-    } 
-    return cache as T
-  }
+export const useCache = <T>(builder: () => Promise<T>): (() => Promise<T>) => {
+  let cache: Promise<T> | undefined = undefined
+  return () => cache ?? (cache = builder())
 }
