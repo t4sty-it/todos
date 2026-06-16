@@ -1,4 +1,4 @@
-import { parse, patch, stringify, type Todo } from "./todos";
+import { parse, patch, stringify, FILENAME_RE, type Todo } from "./todos";
 import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
@@ -67,7 +67,7 @@ export const useTodoStore = (): TodoStore => {
     },
     create: async (slug, type = 'task', tags = ['untagged']) => {
       const all = await todos()
-      const maxId = all.reduce((max, t) => Math.max(max, parseInt(t.id) || 0), 0)
+      const maxId = all.reduce((max, t) => Math.max(max, parseInt(t.id, 10)), 0)
       const newId = String(maxId + 1)
       const url = `${newId}-${slug}.md`
       const title = slug.replace(/-/g, ' ')
@@ -168,12 +168,32 @@ export const useTodoStore = (): TodoStore => {
 const buildListing = async (folderPath: string): Promise<Todo[]> => {
   const [files, meta] = await Promise.all([readdir(folderPath), loadMetaCache()])
 
+  const conforming = files.filter(f => {
+    if (FILENAME_RE.test(f)) return true
+    process.stderr.write(`Warning: ignoring ${f}: does not match expected format <id>-<slug>.md\n`)
+    return false
+  })
+
+  const idFiles = new Map<string, string[]>()
+  for (const f of conforming) {
+    const id = FILENAME_RE.exec(f)![1]!
+    idFiles.set(id, [...(idFiles.get(id) ?? []), f])
+  }
+  const duplicateIds = new Set<string>()
+  for (const [id, filenames] of idFiles) {
+    if (filenames.length > 1) {
+      process.stderr.write(`Warning: ignoring ${filenames.join(' and ')}: duplicate id ${id}\n`)
+      duplicateIds.add(id)
+    }
+  }
+  const valid = conforming.filter(f => !duplicateIds.has(FILENAME_RE.exec(f)![1]!))
+
   return Promise.all(
-    files.map(async f => {
+    valid.map(async f => {
       const cached = meta.get(f)
       if (cached) {
         return {
-          id: cached.slug,
+          id: cached.id,
           url: f,
           title: cached.title,
           status: cached.status,

@@ -1,5 +1,7 @@
 import { parse as yaml, stringify as toYaml } from 'yaml'
 
+export const FILENAME_RE = /^(\d+)-.+\.md$/
+
 export interface Todo {
   id: string
   url: string
@@ -13,7 +15,7 @@ export interface Todo {
 }
 
 export const parse = (text: string, url: string): Todo => ({
-  id: url.split('-')[0]!,
+  id: FILENAME_RE.exec(url)![1]!,
   url,
   title: parseTitle(text),
   description: parseDescription(text),

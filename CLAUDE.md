@@ -26,10 +26,10 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 {
   "<filename>.md": {
     "blobSha": "<sha>",
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "createdAt": "<ISO 8601>",
     "updatedAt": "<ISO 8601>",
-    "slug": "<id>",
+    "id": "<id>",
     "title": "<title>",
     "status": "<status>",
     "type": "<type>",

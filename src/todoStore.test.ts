@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test'
+import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from 'bun:test'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -40,6 +40,32 @@ describe('all', () => {
     const todos = await useTodoStore().all()
     expect(todos).toHaveLength(3)
     expect(todos.map(t => t.id).sort()).toEqual(['1', '2', '3'])
+  })
+
+  test('ignores non-conforming filenames with a warning', async () => {
+    await writeFile(join(tmpDir, 'todos', 'README.md'), '# not a todo')
+    const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      resetMetaCache()
+      const todos = await useTodoStore().all()
+      expect(todos.map(t => t.id).sort()).toEqual(['1', '2', '3'])
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('README.md'))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  test('ignores all files sharing a duplicate id with a warning', async () => {
+    await writeFile(join(tmpDir, 'todos', '1-duplicate.md'), TODO_1)
+    const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      resetMetaCache()
+      const todos = await useTodoStore().all()
+      expect(todos.map(t => t.id)).not.toContain('1')
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('duplicate id 1'))
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

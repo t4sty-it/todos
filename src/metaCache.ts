@@ -1,15 +1,15 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { useCache } from './utils/useCache'
-import { parse } from './todos'
+import { parse, FILENAME_RE } from './todos'
 
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 interface MetaEntry {
   blobSha: string
   schemaVersion: number
   createdAt: string
   updatedAt: string
-  slug: string
+  id: string
   title: string
   status?: string
   type?: string
@@ -21,7 +21,7 @@ type MetaStore = Record<string, MetaEntry>
 export type MetaMapEntry = {
   createdAt: Date
   updatedAt: Date
-  slug: string
+  id: string
   title: string
   status?: string
   type?: string
@@ -61,6 +61,7 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
   const [stored, blobShas] = await Promise.all([readMetaStore(), fetchBlobShas()])
 
   const stale = [...blobShas.entries()]
+    .filter(([filename]) => FILENAME_RE.test(filename))
     .filter(([filename, sha]) => {
       const entry = stored[filename]
       return !entry || entry.blobSha !== sha || entry.schemaVersion !== SCHEMA_VERSION
@@ -85,7 +86,7 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
           blobSha: blobShas.get(filename)!,
           schemaVersion: SCHEMA_VERSION,
           createdAt, updatedAt,
-          slug: filename.split('-')[0]!,
+          id: FILENAME_RE.exec(filename)![1]!,
           title, status, type, tags,
         }
       })
@@ -99,12 +100,13 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
 
   const result = new Map<string, MetaMapEntry>()
   for (const [filename, entry] of Object.entries(stored)) {
+    if (!FILENAME_RE.test(filename)) continue
     const createdAt = entry.createdAt ? new Date(entry.createdAt) : undefined
     const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : undefined
     if (createdAt && updatedAt && !isNaN(createdAt.getTime()) && !isNaN(updatedAt.getTime())) {
       result.set(filename, {
         createdAt, updatedAt,
-        slug: entry.slug, title: entry.title,
+        id: entry.id, title: entry.title,
         status: entry.status, type: entry.type, tags: entry.tags,
       })
     } else if (blobShas.has(filename)) {
