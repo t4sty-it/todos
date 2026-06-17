@@ -44,7 +44,9 @@ export const parseTitle = (text: string) => titleRegex.exec(text)?.at(1) ?? ''
 const parseDescription = (text: string) => {
   const lines = text.split('\n')
   const titleLineIdx = lines.findIndex(line => line.startsWith('# '))
-  return lines.slice(titleLineIdx+1).join('\n')
+  if (titleLineIdx !== -1) return lines.slice(titleLineIdx + 1).join('\n')
+  const fmEndIdx = lines.indexOf('---', 1)
+  return fmEndIdx === -1 ? text : lines.slice(fmEndIdx + 1).join('\n')
 }
 
 export const stringify = (todo: Todo): string => {

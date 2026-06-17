@@ -37,6 +37,18 @@ tags: FE, BE
     expect(result.title).toBe('')
   })
 
+  test('no title: description is content after frontmatter, not entire file', () => {
+    const t = `---\nstatus: new\n---\nsome body\n`
+    const result = parse(t, '3-x.md')
+    expect(result.description).toBe('some body\n')
+  })
+
+  test('no title, no frontmatter: description is entire text', () => {
+    const t = `some body\n`
+    const result = parse(t, '3-x.md')
+    expect(result.description).toBe('some body\n')
+  })
+
   test('empty frontmatter yields no fields', () => {
     const t = `---\n---\n# T\n`
     const result = parse(t, '4-x.md')
