@@ -3,7 +3,7 @@ import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
 import { applyDisplay } from "./config"
 import { useConfigStore } from "./configStore"
-import { doc, helpText, match, ok, param, rest, route, select, terminal, when, type Router } from "./utils/router"
+import { doc, helpText, match, param, rest, route, select, terminal, when, type Router } from "./utils/router"
 
 const todos = useTodoStore()
 const config = await useConfigStore().get()
@@ -19,25 +19,17 @@ const parseTags = (s: string) => s.replace(/^#/, '').split(',').map(t => t.trim(
 
 const router = select(
   doc('all', 'List all todos as a table with timestamps',
-    match('all', _ => todos.all()
-        .then(tableDisplay)
-        .then(ok)
-    )
+    match('all', terminal(_ => todos.all().then(tableDisplay)))
   ),
 
   doc('fields', 'List available fields',
-    match('fields', _ => todos.fields()
-      .then(writeList)
-      .then(ok)
-    )
+    match('fields', terminal(_ => todos.fields().then(writeList)))
   ),
 
   doc('values <field>', 'List values for a field',
     match('values',
       param('field',
-        r => todos.fieldValues(r.params['field'] as keyof Todo)
-          .then(writeList)
-          .then(ok)
+        terminal(r => todos.fieldValues(r.params['field'] as keyof Todo).then(writeList))
       ))
   ),
 
@@ -45,12 +37,10 @@ const router = select(
     match('with',
       param('field',
         param('value',
-          r => todos.filterBy(
+          terminal(r => todos.filterBy(
             r.params['field'] as keyof Todo,
             r.params['value']!
-          )
-          .then(tableDisplay)
-          .then(ok)
+          ).then(tableDisplay))
         )
       )
     )
@@ -59,16 +49,14 @@ const router = select(
   doc('view <name>', 'Apply a named view from config',
     match('view',
       param('name',
-        r => {
+        terminal(r => {
           const view = config.views?.[r.params['name']!]
           if (!view) {
             const available = Object.keys(config.views ?? {}).join(', ') || 'none'
-            return ok(`Unknown view: "${r.params['name']}" (available: ${available})`)
+            return `Unknown view: "${r.params['name']}" (available: ${available})`
           }
-          return todos.view(view)
-            .then(tableDisplay)
-            .then(ok)
-        }
+          return todos.view(view).then(tableDisplay)
+        })
       )
     )
   ),
@@ -76,11 +64,11 @@ const router = select(
   doc('search <query>', 'Search todos by content (exact matches first, then fuzzy)',
     match('search',
       rest('query',
-        r => {
+        terminal(r => {
           const q = r.params['query']!
-          if (!q) return ok('Usage: todos search <query>')
-          return todos.search(q).then(tableDisplay).then(ok)
-        }
+          if (!q) return 'Usage: todos search <query>'
+          return todos.search(q).then(tableDisplay)
+        })
       )
     )
   ),
@@ -103,13 +91,11 @@ const router = select(
         match('set',
           param('field',
             param('value',
-              r => todos.set(
+              terminal(r => todos.set(
                 r.params['id']!,
                 r.params['field'] as keyof Todo,
                 r.params['value']!
-              )
-              .then(shortDisplay)
-              .then(ok)
+              ).then(shortDisplay))
             )
           )
         )
