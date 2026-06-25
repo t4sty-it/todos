@@ -4,6 +4,10 @@ import { useTodoStore } from "./todoStore"
 import { applyDisplay } from "./config"
 import { useConfigStore } from "./configStore"
 import { doc, helpText, match, param, rest, route, select, terminal, when, type Router } from "./utils/router"
+import { findProjectRoot } from "./utils/findProjectRoot"
+
+const root = findProjectRoot(process.cwd())
+if (root) process.chdir(root)
 
 const todos = useTodoStore()
 const config = await useConfigStore().get()
