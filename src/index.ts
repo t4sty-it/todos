@@ -4,7 +4,7 @@ import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
 import { applyDisplay } from "./config"
 import { useConfigStore } from "./configStore"
-import { doc, helpText, match, param, rest, route, select, terminal, when, type Route, type Router } from "./utils/router"
+import { completing, completionCandidates, doc, helpText, match, param, rest, route, select, terminal, when, type Route, type Router } from "./utils/router"
 import { findProjectRoot } from "./utils/findProjectRoot"
 
 const root = findProjectRoot(process.cwd())
@@ -18,9 +18,16 @@ const runGit = (args: string[]): Promise<string> => {
   return new Response(proc.stdout).text()
 }
 
+const bashCompletionScript = `\
+_todos_complete() {
+  COMPREPLY=(\$(compgen -W "\$(todos completions query \$COMP_CWORD "\${COMP_WORDS[@]}" 2>/dev/null)" -- "\${COMP_WORDS[COMP_CWORD]}"))
+}
+complete -F _todos_complete todos`
+
 const word = <O>(name: string, child: Router<any, O>) => when((t: string) => !t.startsWith('#'), name, child)
 const tag  = <O>(name: string, child: Router<any, O>) => when((t: string) =>  t.startsWith('#'), name, child)
 const parseTags = (s: string) => s.replace(/^#/, '').split(',').map(t => t.trim())
+const readonlyFields = new Set(['id', 'url', 'createdAt', 'updatedAt'])
 
 const router: Router<Route<string>, string> = select(
   doc('--help, -h', 'Print help',
@@ -37,6 +44,24 @@ const router: Router<Route<string>, string> = select(
     )
   ),
 
+  doc('completions bash', 'Print bash completion script (eval "$(todos completions bash)")',
+    match('completions',
+      select(
+        match('bash', terminal(_ => bashCompletionScript)),
+        match('query',
+          param('cword',
+            rest('args', terminal(async r => {
+              const cword = parseInt(r.params['cword']!)
+              const words = (r.params['args'] ?? '').split(' ').filter(Boolean)
+              const preceding = words.slice(1, cword)
+              return (await completionCandidates(router, preceding)).join('\n')
+            }))
+          )
+        ),
+      )
+    )
+  ),
+
   doc('all', 'List all todos as a table with timestamps',
     match('all', terminal(_ => todos.all().then(tableDisplay)))
   ),
@@ -47,15 +72,15 @@ const router: Router<Route<string>, string> = select(
 
   doc('values <field>', 'List values for a field',
     match('values',
-      param('field',
+      completing(() => todos.fields(), 'field',
         terminal(r => todos.fieldValues(r.params['field'] as keyof Todo).then(writeList))
       ))
   ),
 
   doc('with <field> <value>', 'Filter todos by field value (empty string matches absent/empty)',
     match('with',
-      param('field',
-        param('value',
+      completing(() => todos.fields(), 'field',
+        completing(p => todos.fieldValues(p['field'] as keyof Todo), 'value',
           terminal(r => todos.filterBy(
             r.params['field'] as keyof Todo,
             r.params['value']!
@@ -65,9 +90,13 @@ const router: Router<Route<string>, string> = select(
     )
   ),
 
+  doc('views', 'List available view names',
+    match('views', terminal(_ => writeList(Object.keys(config.views ?? {}))))
+  ),
+
   doc('view <name>', 'Apply a named view from config',
     match('view',
-      param('name',
+      completing(() => Object.keys(config.views ?? {}), 'name',
         terminal(r => {
           const view = config.views?.[r.params['name']!]
           if (!view) {
@@ -101,15 +130,17 @@ const router: Router<Route<string>, string> = select(
     ))
   ),
 
-  param('id',
+  completing(() => todos.fieldValues('id' as keyof Todo), 'id',
     select(
       doc('<id> history', 'Show git history for a todo with diffs',
         match('history', terminal(r => historyDisplay(r.params['id']!)))
       ),
       doc('<id> set <field> <value>', 'Set a field on a todo (id/url/createdAt/updatedAt are read-only)',
         match('set',
-          param('field',
-            param('value',
+          completing(
+            () => todos.fields().then(fs => fs.filter(f => !readonlyFields.has(f))),
+            'field',
+            completing(p => todos.fieldValues(p['field'] as keyof Todo), 'value',
               terminal(r => todos.set(
                 r.params['id']!,
                 r.params['field'] as keyof Todo,
@@ -131,10 +162,14 @@ const router: Router<Route<string>, string> = select(
         }))
       ),
       doc('<id> tag add <tag>', 'Add a tag to a todo (idempotent)',
-        match('tag', match('add', param('tag', terminal(r => todos.tag(r.params['id']!, 'add', r.params['tag']!).then(shortDisplay)))))
+        match('tag', match('add', completing(() => todos.fieldValues('tags' as keyof Todo), 'tag',
+          terminal(r => todos.tag(r.params['id']!, 'add', r.params['tag']!).then(shortDisplay))
+        )))
       ),
       doc('<id> tag remove <tag>', 'Remove a tag from a todo',
-        match('tag', match('remove', param('tag', terminal(r => todos.tag(r.params['id']!, 'remove', r.params['tag']!).then(shortDisplay)))))
+        match('tag', match('remove', completing(() => todos.fieldValues('tags' as keyof Todo), 'tag',
+          terminal(r => todos.tag(r.params['id']!, 'remove', r.params['tag']!).then(shortDisplay))
+        )))
       ),
       doc('<id>', 'Show full detail for a todo',
         terminal(r => todos.get(r.params['id']!).then(detailDisplay))
@@ -244,6 +279,7 @@ async function historyDisplay(todoId: string): Promise<string> {
 
   return sections.join('\n\n')
 }
+
 
 const args = process.argv.slice(2)
 if (args.length === 0) {

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 bun install          # install dependencies
 bun run src/index.ts # run the CLI
 bun test             # run all tests
-bun run deploy       # compile and install binary to $HOME/.bin/todos
+bun run deploy       # compile and install binary to $HOME/.bin/todos and completion script to $HOME/.bash_completion.d/todos
 ```
 
 ## Architecture
@@ -75,26 +75,32 @@ A composable path-routing system. A `Router<I, O>` is `(i: I) => PromiseOr<Resul
 
 | Export | Behavior |
 |--------|----------|
-| `select` | Tries each child router in order, returns the first `Ok`; implements `Doc` by aggregating child docs |
-| `match(token, child)` | Matches a literal path segment, advances to `child` |
-| `param(name, child)` | Captures the next path segment as a named param, advances to `child`; implements `Doc` by delegating to child |
+| `select` | Tries each child router in order, returns the first `Ok`; implements `Doc` and `Completable` by aggregating child docs/candidates |
+| `match(token, child)` | Matches a literal path segment, advances to `child`; completion candidate is the literal token itself |
+| `param(name, child)` | Captures the next path segment as a named param, advances to `child`; implements `Doc` by delegating to child; no completion candidates (use `completing` instead) |
+| `completing(fn, name, child)` | Like `param`, but carries a completion thunk `fn(params) => string[]` called when no token is consumed yet |
 | `when(pred, name, child)` | Like `param`, but only captures if the token satisfies `pred` (and is not EOP) |
 | `rest(name, child)` | Captures all remaining tokens before EOP as a single space-joined param, then advances to `[EOP]`; used for variadic arguments like `search <query>` |
 | `terminal(cb)` | Succeeds only when the next token is EOP; calls `cb` and wraps result in `ok` |
 | `route(path, value)` | Constructs a `Route` by splitting `path` on `/` into tokens |
 | `ok` / `routeNotFound` | Result constructors |
-| `doc(command, description, router)` | Wraps a router with a `Doc` annotation; `command` and `description` are used by `helpText` |
+| `doc(command, description, router)` | Wraps a router with a `Doc` annotation; `command` and `description` are used by `helpText`; propagates `Completable` and `_literalToken` from the wrapped router |
 | `helpText(router)` | Extracts all `Doc` annotations from a router tree and formats them as an aligned command listing |
+| `completionCandidates(router, tokens)` | Walks the router consuming `tokens` one by one and returns completion candidates for the next position; literal `match` nodes take priority over wildcard `completing`/`param` nodes in `select` |
 
 ### Entry point (`src/index.ts`)
 
-Builds a `Router` directly from the todo store using `select`/`match`/`param`/`when`/`rest`/`terminal`/`doc`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Passing no arguments, `--help`, or `-h` (or an unrecognised route) prints help via `helpText(router)`. Routes:
+Builds a `Router` directly from the todo store using `select`/`match`/`param`/`completing`/`when`/`rest`/`terminal`/`doc`, then calls it with `route(process.argv.slice(2).join('/'), '')`. Passing no arguments or an unrecognised route prints help via `helpText(router)`. Routes:
 
 | Command | Description |
 |---------|-------------|
 | `--help` / `-h` | Print help listing all commands (also shown when no args given or route not found) |
+| `--version` / `-v` | Print the version from `package.json` |
+| `completions bash` | Print a bash completion script (`eval "$(todos completions bash)"`) |
+| `completions query <cword> <words...>` | Internal: return newline-separated completion candidates for the given cursor position; called by the completion script |
 | `all` | List all todos as an aligned table with datetimes |
 | `fields` | List available fields |
+| `views` | List available view names |
 | `values/<field>` | List values for a field |
 | `with/<field>/<value>` | Filter todos by field value, table format; empty string matches absent/empty fields |
 | `view/<name>` | Apply a named view from config, table format |

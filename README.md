@@ -65,6 +65,24 @@ Exact matches are never repeated in the fuzzy section. Multi-word queries are tr
 
 If running from source: `bun run src/index.ts` in place of `todos`.
 
+## Tab completion
+
+`todos` can generate its own bash completion script:
+
+```bash
+# activate in the current shell
+eval "$(todos completions bash)"
+
+# or install permanently (sourced automatically by bash-completion v2)
+todos completions bash > ~/.bash_completion.d/todos
+```
+
+To make it permanent without relying on `~/.bash_completion.d/`, add the `eval` line to your `~/.bashrc`.
+
+`bun run deploy` installs both the binary and the completion script automatically.
+
+Completions are context-aware: field names, field values, view names, todo IDs, and subcommands are all suggested dynamically based on position.
+
 ## Todo file format
 
 Todo files live in a `todos/` directory in the current working directory.
