@@ -1,5 +1,5 @@
 ---
-status: ready
+status: closed
 type: feature
 tags:
   - untagged

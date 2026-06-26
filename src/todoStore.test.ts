@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from 'bun:test'
-import { mkdir, writeFile, rm } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { useTodoStore } from './todoStore'
@@ -53,6 +53,15 @@ describe('all', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+
+  test('returns todos from subdirectories', async () => {
+    await mkdir(join(tmpDir, 'todos', 'sub'), { recursive: true })
+    await writeFile(join(tmpDir, 'todos', 'sub', '10-sub-task.md'), TODO_1)
+    resetMetaCache()
+    const todos = await useTodoStore().all()
+    expect(todos.some(t => t.id === '10')).toBe(true)
+    expect(todos.some(t => t.url === 'sub/10-sub-task.md')).toBe(true)
   })
 
   test('ignores all files sharing a duplicate id with a warning', async () => {

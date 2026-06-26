@@ -129,6 +129,20 @@ describe('loadMetaCache', () => {
     expect(rebuilt['1-fix-login.md'].schemaVersion).toBe(2)
   })
 
+  test('includes todos from subdirectories', async () => {
+    await mkdir(join(gitDir, 'todos', 'sub'), { recursive: true })
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', 'sub', '2-sub-task.md'), TODO_2)
+    await commit('add todos')
+
+    const map = await loadMetaCache()
+
+    expect(map.has('1-fix-login.md')).toBe(true)
+    expect(map.has('sub/2-sub-task.md')).toBe(true)
+    expect(map.get('sub/2-sub-task.md')!.id).toBe('2')
+    expect(map.get('sub/2-sub-task.md')!.title).toBe('Add export')
+  })
+
   test('excludes non-matching filenames from result', async () => {
     await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
     await writeFile(join(gitDir, 'todos', 'README.md'), '# Not a todo')

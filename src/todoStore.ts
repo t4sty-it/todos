@@ -166,17 +166,20 @@ export const useTodoStore = (): TodoStore => {
 }
 
 const buildListing = async (folderPath: string): Promise<Todo[]> => {
-  const [files, meta] = await Promise.all([readdir(folderPath), loadMetaCache()])
+  const [allFiles, meta] = await Promise.all([readdir(folderPath, { recursive: true }), loadMetaCache()])
 
-  const conforming = files.filter(f => {
-    if (FILENAME_RE.test(f)) return true
+  const mdFiles = (allFiles as string[]).filter(f => f.endsWith('.md'))
+
+  const conforming = mdFiles.filter(f => {
+    const base = f.split('/').at(-1)!
+    if (FILENAME_RE.test(base)) return true
     process.stderr.write(`Warning: ignoring ${f}: does not match expected format <id>-<slug>.md\n`)
     return false
   })
 
   const idFiles = new Map<string, string[]>()
   for (const f of conforming) {
-    const id = FILENAME_RE.exec(f)![1]!
+    const id = FILENAME_RE.exec(f.split('/').at(-1)!)![1]!
     idFiles.set(id, [...(idFiles.get(id) ?? []), f])
   }
   const duplicateIds = new Set<string>()
@@ -186,7 +189,7 @@ const buildListing = async (folderPath: string): Promise<Todo[]> => {
       duplicateIds.add(id)
     }
   }
-  const valid = conforming.filter(f => !duplicateIds.has(FILENAME_RE.exec(f)![1]!))
+  const valid = conforming.filter(f => !duplicateIds.has(FILENAME_RE.exec(f.split('/').at(-1)!)![1]!))
 
   return Promise.all(
     valid.map(async f => {

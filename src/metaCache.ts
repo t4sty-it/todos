@@ -1,4 +1,5 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { basename } from 'node:path'
 import { useCache } from './utils/useCache'
 import { parse, FILENAME_RE } from './todos'
 
@@ -61,7 +62,7 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
   const [stored, blobShas] = await Promise.all([readMetaStore(), fetchBlobShas()])
 
   const stale = [...blobShas.entries()]
-    .filter(([filename]) => FILENAME_RE.test(filename))
+    .filter(([filename]) => FILENAME_RE.test(basename(filename)))
     .filter(([filename, sha]) => {
       const entry = stored[filename]
       return !entry || entry.blobSha !== sha || entry.schemaVersion !== SCHEMA_VERSION
@@ -69,11 +70,18 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
     .map(([filename]) => filename)
 
   if (stale.length > 0) {
-    const updates = await Promise.all(
+    const updates = (await Promise.all(
       stale.map(async filename => {
         const filepath = `todos/${filename}`
-        const [text, createdAt, updatedAt] = await Promise.all([
-          Bun.file(filepath).text(),
+        // The git index may still reference the old path after a plain `mv`
+        // (not `git mv`). Skip it — readdir will find the file at its new location.
+        let text: string
+        try {
+          text = await Bun.file(filepath).text()
+        } catch {
+          return null
+        }
+        const [createdAt, updatedAt] = await Promise.all([
           runGit(['log', '--diff-filter=A', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
           runGit(['log', '--format=%cI', '-1', '--', filepath]).then(s => s.trim()),
         ])
@@ -86,11 +94,11 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
           blobSha: blobShas.get(filename)!,
           schemaVersion: SCHEMA_VERSION,
           createdAt, updatedAt,
-          id: FILENAME_RE.exec(filename)![1]!,
+          id: FILENAME_RE.exec(basename(filename))![1]!,
           title, status, type, tags,
         }
       })
-    )
+    )).filter(u => u !== null)
     for (const { filename, ...entry } of updates) {
       stored[filename] = entry
     }
@@ -100,7 +108,7 @@ const buildMetaCache = async (): Promise<Map<string, MetaMapEntry>> => {
 
   const result = new Map<string, MetaMapEntry>()
   for (const [filename, entry] of Object.entries(stored)) {
-    if (!FILENAME_RE.test(filename)) continue
+    if (!FILENAME_RE.test(basename(filename))) continue
     const createdAt = entry.createdAt ? new Date(entry.createdAt) : undefined
     const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : undefined
     if (createdAt && updatedAt && !isNaN(createdAt.getTime()) && !isNaN(updatedAt.getTime())) {

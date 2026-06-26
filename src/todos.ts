@@ -1,4 +1,5 @@
 import { parse as yaml, stringify as toYaml } from 'yaml'
+import { basename } from 'node:path'
 
 export const FILENAME_RE = /^(\d+)-.+\.md$/
 
@@ -15,7 +16,7 @@ export interface Todo {
 }
 
 export const parse = (text: string, url: string): Todo => ({
-  id: FILENAME_RE.exec(url)![1]!,
+  id: FILENAME_RE.exec(basename(url))![1]!,
   url,
   title: parseTitle(text),
   description: parseDescription(text),
