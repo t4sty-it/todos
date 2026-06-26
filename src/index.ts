@@ -4,7 +4,7 @@ import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
 import { applyDisplay } from "./config"
 import { useConfigStore } from "./configStore"
-import { doc, helpText, match, param, rest, route, select, terminal, when, type Router } from "./utils/router"
+import { doc, helpText, match, param, rest, route, select, terminal, when, type Route, type Router } from "./utils/router"
 import { findProjectRoot } from "./utils/findProjectRoot"
 
 const root = findProjectRoot(process.cwd())
@@ -22,7 +22,21 @@ const word = <O>(name: string, child: Router<any, O>) => when((t: string) => !t.
 const tag  = <O>(name: string, child: Router<any, O>) => when((t: string) =>  t.startsWith('#'), name, child)
 const parseTags = (s: string) => s.replace(/^#/, '').split(',').map(t => t.trim())
 
-const router = select(
+const router: Router<Route<string>, string> = select(
+  doc('--help, -h', 'Print help',
+    select(
+      match('--help', terminal(_ => helpText(router))),
+      match('-h',     terminal(_ => helpText(router))),
+    )
+  ),
+
+  doc('--version, -v', 'Print version',
+    select(
+      match('--version', terminal(_ => pkg.version)),
+      match('-v',        terminal(_ => pkg.version)),
+    )
+  ),
+
   doc('all', 'List all todos as a table with timestamps',
     match('all', terminal(_ => todos.all().then(tableDisplay)))
   ),
@@ -232,9 +246,7 @@ async function historyDisplay(todoId: string): Promise<string> {
 }
 
 const args = process.argv.slice(2)
-if (args[0] === '--version' || args[0] === '-v') {
-  write(pkg.version)
-} else if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+if (args.length === 0) {
   write(helpText(router))
 } else {
   try {
