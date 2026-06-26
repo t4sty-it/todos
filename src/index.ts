@@ -1,3 +1,4 @@
+import pkg from '../package.json'
 import { write } from "./io"
 import type { Todo } from "./todos"
 import { useTodoStore } from "./todoStore"
@@ -231,7 +232,9 @@ async function historyDisplay(todoId: string): Promise<string> {
 }
 
 const args = process.argv.slice(2)
-if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+if (args[0] === '--version' || args[0] === '-v') {
+  write(pkg.version)
+} else if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
   write(helpText(router))
 } else {
   try {
