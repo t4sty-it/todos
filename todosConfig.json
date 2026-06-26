@@ -16,6 +16,11 @@
           "type": "feature"
         }
       ],
+      "exclude": [
+        {
+          "status": "closed"
+        }
+      ],
       "sort": [
         "id desc"
       ]
@@ -43,5 +48,5 @@
       "sort": [ "type asc", "id desc" ]
     }
   },
-  "editor": "nvim"
+  "editor": "codium"
 }
