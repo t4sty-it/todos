@@ -132,6 +132,22 @@ When a field is updated with `set`, all other fields in the file are preserved e
 
 Place a `todosConfig.json` file next to your `todos/` folder. The file is optional — if absent, output is unstyled.
 
+### Paths
+
+By default, todos are read from a `todos/` directory. You can configure one or more search paths:
+
+```json
+{ "paths": ["todos", "work-todos"] }
+```
+
+If `paths` is absent or empty, `todos/` is used. Paths may be relative to the project root or absolute — absolute paths allow aggregating todos from different git repositories:
+
+```json
+{ "paths": ["todos", "/home/user/personal-todos"] }
+```
+
+New todos are always created in the first configured path. The `findProjectRoot` heuristic now also recognizes `todosConfig.json` as a project root marker (useful when `todos/` is not the default).
+
 ### Editor
 
 Set `"editor"` to the command used to open files. Falls back to `$EDITOR` if unset.

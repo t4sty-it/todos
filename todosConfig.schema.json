@@ -11,6 +11,15 @@
       "description": "Command used to open todo files. Falls back to $EDITOR if absent. Multi-word commands are split on whitespace before spawning.",
       "examples": ["nvim", "hx", "nano", "code --wait", "subl -w"]
     },
+    "paths": {
+      "type": "array",
+      "description": "Search paths for todo files. Defaults to [\"todos\"] if absent or empty. Each path may be relative to the project root or absolute (to support todos tracked in different git repositories).",
+      "items": {
+        "type": "string",
+        "description": "A directory containing todo markdown files."
+      },
+      "examples": [["todos"], ["todos", "work-todos"], ["/home/user/personal-todos"]]
+    },
     "display": {
       "type": "object",
       "description": "Style rules for table output. Each key is a field name; its value maps field values to space-separated style tokens.",

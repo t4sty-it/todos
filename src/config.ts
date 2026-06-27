@@ -8,6 +8,7 @@ export interface View {
 
 export interface Config {
   editor?: string
+  paths?: string[]
   display?: {
     [field: string]: {
       [value: string]: string

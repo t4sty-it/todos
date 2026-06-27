@@ -61,7 +61,7 @@ describe('all', () => {
     resetMetaCache()
     const todos = await useTodoStore().all()
     expect(todos.some(t => t.id === '10')).toBe(true)
-    expect(todos.some(t => t.url === 'sub/10-sub-task.md')).toBe(true)
+    expect(todos.some(t => t.url === 'todos/sub/10-sub-task.md')).toBe(true)
   })
 
   test('ignores all files sharing a duplicate id with a warning', async () => {
@@ -276,6 +276,70 @@ describe('reload', () => {
     store.reload()
     const all = await store.all()
     expect(all.some(t => t.id === '9')).toBe(true)
+  })
+})
+
+describe('multi-path support', () => {
+  let multiDir: string
+  let prevCwd: string
+
+  beforeEach(async () => {
+    multiDir = join(tmpdir(), 'todos-multi-test-' + Math.random().toString(36).slice(2))
+    await mkdir(join(multiDir, 'todos'), { recursive: true })
+    await mkdir(join(multiDir, 'work-todos'), { recursive: true })
+    await writeFile(join(multiDir, 'todos', '1-personal.md'), TODO_1)
+    await writeFile(join(multiDir, 'work-todos', '2-work-task.md'), TODO_2)
+    await writeFile(
+      join(multiDir, 'todosConfig.json'),
+      JSON.stringify({ paths: ['todos', 'work-todos'] })
+    )
+    resetMetaCache()
+    prevCwd = process.cwd()
+    process.chdir(multiDir)
+  })
+
+  afterEach(async () => {
+    process.chdir(prevCwd)
+    await rm(multiDir, { recursive: true, force: true })
+  })
+
+  test('aggregates todos from all configured paths', async () => {
+    const store = useTodoStore()
+    const all = await store.all()
+    expect(all).toHaveLength(2)
+    expect(all.some(t => t.id === '1')).toBe(true)
+    expect(all.some(t => t.id === '2')).toBe(true)
+  })
+
+  test('todo.url includes the source path prefix', async () => {
+    const store = useTodoStore()
+    const all = await store.all()
+    expect(all.some(t => t.url === 'todos/1-personal.md')).toBe(true)
+    expect(all.some(t => t.url === 'work-todos/2-work-task.md')).toBe(true)
+  })
+
+  test('get() retrieves todo from any configured path', async () => {
+    const store = useTodoStore()
+    const todo = await store.get('2')
+    expect(todo.title).toBe('Add export')
+    expect(todo.url).toBe('work-todos/2-work-task.md')
+  })
+
+  test('create() writes to the first configured path', async () => {
+    const store = useTodoStore()
+    const todo = await store.create('new-task')
+    expect(todo.url.startsWith('todos/')).toBe(true)
+    const all = await store.all()
+    expect(all.some(t => t.id === todo.id)).toBe(true)
+  })
+
+  test('defaults to todos/ when paths is absent', async () => {
+    await writeFile(join(multiDir, 'todosConfig.json'), JSON.stringify({}))
+    resetMetaCache()
+    const store = useTodoStore()
+    const all = await store.all()
+    expect(all).toHaveLength(1)
+    expect(all[0]!.url).toBe('todos/1-personal.md')
   })
 })
 

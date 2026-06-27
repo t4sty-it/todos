@@ -48,5 +48,9 @@
       "sort": [ "type asc", "id desc" ]
     }
   },
-  "editor": "codium"
+  "editor": "codium",
+  "paths": [
+    "todos",
+    "another-todos-folder"
+  ]
 }

@@ -2,8 +2,10 @@ import { parse, patch, stringify, FILENAME_RE, type Todo } from "./todos";
 import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { useCache } from "./utils/useCache";
-import { loadMetaCache, resetMetaCache, patchMetaCacheEntry } from "./metaCache";
+import { loadMetaCache, resetMetaCache, patchMetaCacheEntry, setMetaCachePaths } from "./metaCache";
+import { useConfigStore } from "./configStore";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
@@ -19,11 +21,23 @@ export interface TodoStore {
   view(config: View): Promise<Todo[]>
 }
 
-const mainFolder = 'todos'
-
 export const useTodoStore = (): TodoStore => {
 
-  let todos = useCache(() => buildListing(mainFolder))
+  const configStore = useConfigStore()
+
+  const getPaths = async (): Promise<string[]> => {
+    const config = await configStore.get()
+    return (config.paths && config.paths.length > 0) ? config.paths : ['todos']
+  }
+
+  const buildAllListings = async (): Promise<Todo[]> => {
+    const paths = await getPaths()
+    setMetaCachePaths(paths)
+    const results = await Promise.all(paths.map(p => buildListing(p)))
+    return results.flat()
+  }
+
+  let todos = useCache(buildAllListings)
 
   return {
     all: () => todos(),
@@ -66,21 +80,24 @@ export const useTodoStore = (): TodoStore => {
       })
     },
     create: async (slug, type = 'task', tags = ['untagged']) => {
+      const paths = await getPaths()
+      const firstPath = paths[0]!
       const all = await todos()
       const maxId = all.reduce((max, t) => Math.max(max, parseInt(t.id, 10)), 0)
       const newId = String(maxId + 1)
-      const url = `${newId}-${slug}.md`
+      const filename = `${newId}-${slug}.md`
+      const url = join(firstPath, filename)
       const title = slug.replace(/-/g, ' ')
       const todo: Todo = { id: newId, url, title, status: 'new', type, tags }
-      await writeFile(`${mainFolder}/${url}`, stringify(todo))
-      todos = useCache(() => buildListing(mainFolder))
+      await writeFile(url, stringify(todo))
+      todos = useCache(buildAllListings)
       return todo
     },
     search: async (query: string) => {
       const listing = await todos()
       const withContent = await Promise.all(
         listing.map(async todo => {
-          const text = await Bun.file(`${mainFolder}/${todo.url}`).text()
+          const text = await Bun.file(todo.url).text()
           const full = parse(text, todo.url)
           full.createdAt = todo.createdAt
           full.updatedAt = todo.updatedAt
@@ -110,14 +127,14 @@ export const useTodoStore = (): TodoStore => {
     get: async id => {
       const listing = (await todos()).find(t => t.id === id)
       if (!listing) throw new Error(`Todo not found: ${id}`)
-      const text = await Bun.file(`${mainFolder}/${listing.url}`).text()
+      const text = await Bun.file(listing.url).text()
       const todo = parse(text, listing.url)
       todo.createdAt = listing.createdAt
       todo.updatedAt = listing.updatedAt
       return todo
     },
     reload: () => {
-      todos = useCache(() => buildListing(mainFolder))
+      todos = useCache(buildAllListings)
       resetMetaCache()
     },
     tag: async (id, op, tagName) => {
@@ -130,13 +147,13 @@ export const useTodoStore = (): TodoStore => {
         ? [...new Set([...current, tagName])].filter(t => t !== 'untagged')
         : current.filter(t => t !== tagName)
 
-      const filePath = `${mainFolder}/${todo.url}`
+      const filePath = todo.url
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, 'tags', newTags))
 
       await patchMetaCacheEntry(todo.url, { tags: newTags })
 
-      todos = useCache(() => buildListing(mainFolder))
+      todos = useCache(buildAllListings)
       return { ...todo, tags: newTags }
     },
     view: async (viewConfig) => {
@@ -150,7 +167,7 @@ export const useTodoStore = (): TodoStore => {
       const todo = all.find(t => t.id === id)
       if (!todo) throw new Error(`Todo not found: ${id}`)
 
-      const filePath = `${mainFolder}/${todo.url}`
+      const filePath = todo.url
       const text = await Bun.file(filePath).text()
       await writeFile(filePath, patch(text, field, value))
 
@@ -159,7 +176,7 @@ export const useTodoStore = (): TodoStore => {
       else if (field === 'type') await patchMetaCacheEntry(todo.url, { type: value })
       else if (field === 'tags') await patchMetaCacheEntry(todo.url, { tags: value.split(',').map(s => s.trim()) })
 
-      todos = useCache(() => buildListing(mainFolder))
+      todos = useCache(buildAllListings)
       return { ...todo, [field]: value }
     }
   }
@@ -193,11 +210,12 @@ const buildListing = async (folderPath: string): Promise<Todo[]> => {
 
   return Promise.all(
     valid.map(async f => {
-      const cached = meta.get(f)
+      const url = join(folderPath, f)
+      const cached = meta.get(url)
       if (cached) {
         return {
           id: cached.id,
-          url: f,
+          url,
           title: cached.title,
           status: cached.status,
           type: cached.type,
@@ -206,11 +224,10 @@ const buildListing = async (folderPath: string): Promise<Todo[]> => {
           updatedAt: () => Promise.resolve(cached.updatedAt),
         } satisfies Todo
       }
-      // Fallback for untracked files not yet in the cache
-      const text = await Bun.file(`${folderPath}/${f}`).text()
-      const todo = parse(text, f)
-      todo.createdAt = () => loadMetaCache().then(m => m.get(f)?.createdAt)
-      todo.updatedAt = () => loadMetaCache().then(m => m.get(f)?.updatedAt)
+      const text = await Bun.file(url).text()
+      const todo = parse(text, url)
+      todo.createdAt = () => loadMetaCache().then(m => m.get(url)?.createdAt)
+      todo.updatedAt = () => loadMetaCache().then(m => m.get(url)?.updatedAt)
       return todo
     })
   )

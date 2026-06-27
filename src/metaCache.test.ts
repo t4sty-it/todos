@@ -46,7 +46,7 @@ describe('loadMetaCache', () => {
 
     expect(map.size).toBe(2)
 
-    const entry1 = map.get('1-fix-login.md')!
+    const entry1 = map.get('todos/1-fix-login.md')!
     expect(entry1.id).toBe('1')
     expect(entry1.title).toBe('Fix login')
     expect(entry1.status).toBe('active')
@@ -57,7 +57,7 @@ describe('loadMetaCache', () => {
     expect(isNaN(entry1.createdAt.getTime())).toBe(false)
     expect(isNaN(entry1.updatedAt.getTime())).toBe(false)
 
-    const entry2 = map.get('2-add-export.md')!
+    const entry2 = map.get('todos/2-add-export.md')!
     expect(entry2.id).toBe('2')
     expect(entry2.title).toBe('Add export')
     expect(entry2.status).toBe('new')
@@ -72,9 +72,9 @@ describe('loadMetaCache', () => {
     await loadMetaCache()
 
     const raw = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    const entry = raw['1-fix-login.md']
+    const entry = raw['todos/1-fix-login.md']
     expect(entry).toBeDefined()
-    expect(entry.schemaVersion).toBe(2)
+    expect(entry.schemaVersion).toBe(3)
     expect(typeof entry.blobSha).toBe('string')
     expect(entry.blobSha.length).toBeGreaterThan(0)
     expect(entry.id).toBe('1')
@@ -98,7 +98,7 @@ describe('loadMetaCache', () => {
     await commit('initial')
 
     const map1 = await loadMetaCache()
-    expect(map1.get('1-fix-login.md')!.title).toBe('Fix login')
+    expect(map1.get('todos/1-fix-login.md')!.title).toBe('Fix login')
 
     resetMetaCache()
     const updated = TODO_1.replace('# Fix login', '# Fixed login button')
@@ -106,9 +106,9 @@ describe('loadMetaCache', () => {
     await commit('update title')
 
     const map2 = await loadMetaCache()
-    expect(map2.get('1-fix-login.md')!.title).toBe('Fixed login button')
-    expect(map2.get('1-fix-login.md')!.updatedAt.getTime()).toBeGreaterThan(
-      map1.get('1-fix-login.md')!.updatedAt.getTime() - 1
+    expect(map2.get('todos/1-fix-login.md')!.title).toBe('Fixed login button')
+    expect(map2.get('todos/1-fix-login.md')!.updatedAt.getTime()).toBeGreaterThan(
+      map1.get('todos/1-fix-login.md')!.updatedAt.getTime() - 1
     )
   })
 
@@ -120,13 +120,13 @@ describe('loadMetaCache', () => {
 
     resetMetaCache()
     const stale = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    stale['1-fix-login.md'].schemaVersion = 1
+    stale['todos/1-fix-login.md'].schemaVersion = 1
     await writeFile(join(gitDir, '.todos', 'meta.json'), JSON.stringify(stale, null, 2))
 
     await loadMetaCache()
 
     const rebuilt = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    expect(rebuilt['1-fix-login.md'].schemaVersion).toBe(2)
+    expect(rebuilt['todos/1-fix-login.md'].schemaVersion).toBe(3)
   })
 
   test('includes todos from subdirectories', async () => {
@@ -137,10 +137,10 @@ describe('loadMetaCache', () => {
 
     const map = await loadMetaCache()
 
-    expect(map.has('1-fix-login.md')).toBe(true)
-    expect(map.has('sub/2-sub-task.md')).toBe(true)
-    expect(map.get('sub/2-sub-task.md')!.id).toBe('2')
-    expect(map.get('sub/2-sub-task.md')!.title).toBe('Add export')
+    expect(map.has('todos/1-fix-login.md')).toBe(true)
+    expect(map.has('todos/sub/2-sub-task.md')).toBe(true)
+    expect(map.get('todos/sub/2-sub-task.md')!.id).toBe('2')
+    expect(map.get('todos/sub/2-sub-task.md')!.title).toBe('Add export')
   })
 
   test('excludes non-matching filenames from result', async () => {
@@ -151,9 +151,9 @@ describe('loadMetaCache', () => {
 
     const map = await loadMetaCache()
 
-    expect(map.has('1-fix-login.md')).toBe(true)
-    expect(map.has('README.md')).toBe(false)
-    expect(map.has('invalid.txt')).toBe(false)
+    expect(map.has('todos/1-fix-login.md')).toBe(true)
+    expect(map.has('todos/README.md')).toBe(false)
+    expect(map.has('todos/invalid.txt')).toBe(false)
     expect(map.size).toBe(1)
   })
 
@@ -164,7 +164,7 @@ describe('loadMetaCache', () => {
     const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
     try {
       const map = await loadMetaCache()
-      expect(map.has('1-fix-login.md')).toBe(false)
+      expect(map.has('todos/1-fix-login.md')).toBe(false)
       expect(spy).toHaveBeenCalledWith(expect.stringContaining('1-fix-login.md'))
       expect(spy).toHaveBeenCalledWith(expect.stringContaining('excluded from listings'))
     } finally {
@@ -180,13 +180,13 @@ describe('loadMetaCache', () => {
     resetMetaCache()
 
     const stored = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    stored['1-fix-login.md'].createdAt = 'not-a-date'
+    stored['todos/1-fix-login.md'].createdAt = 'not-a-date'
     await writeFile(join(gitDir, '.todos', 'meta.json'), JSON.stringify(stored, null, 2))
 
     const spy = spyOn(process.stderr, 'write').mockImplementation(() => true)
     try {
       const map = await loadMetaCache()
-      expect(map.has('1-fix-login.md')).toBe(false)
+      expect(map.has('todos/1-fix-login.md')).toBe(false)
       expect(spy).toHaveBeenCalledWith(expect.stringContaining('invalid dates'))
       expect(spy).toHaveBeenCalledWith(expect.stringContaining('1-fix-login.md'))
     } finally {
@@ -217,22 +217,22 @@ describe('patchMetaCacheEntry', () => {
     await commit()
 
     const map = await loadMetaCache()
-    const originalCreatedAt = map.get('1-fix-login.md')!.createdAt
-    const originalUpdatedAt = map.get('1-fix-login.md')!.updatedAt
+    const originalCreatedAt = map.get('todos/1-fix-login.md')!.createdAt
+    const originalUpdatedAt = map.get('todos/1-fix-login.md')!.updatedAt
 
-    await patchMetaCacheEntry('1-fix-login.md', { status: 'closed', tags: ['patched'] })
+    await patchMetaCacheEntry('todos/1-fix-login.md', { status: 'closed', tags: ['patched'] })
 
-    expect(map.get('1-fix-login.md')!.status).toBe('closed')
-    expect(map.get('1-fix-login.md')!.tags).toEqual(['patched'])
-    expect(map.get('1-fix-login.md')!.createdAt).toBe(originalCreatedAt)
-    expect(map.get('1-fix-login.md')!.updatedAt).toBe(originalUpdatedAt)
+    expect(map.get('todos/1-fix-login.md')!.status).toBe('closed')
+    expect(map.get('todos/1-fix-login.md')!.tags).toEqual(['patched'])
+    expect(map.get('todos/1-fix-login.md')!.createdAt).toBe(originalCreatedAt)
+    expect(map.get('todos/1-fix-login.md')!.updatedAt).toBe(originalUpdatedAt)
 
     const stored = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    expect(stored['1-fix-login.md'].status).toBe('closed')
-    expect(stored['1-fix-login.md'].tags).toEqual(['patched'])
+    expect(stored['todos/1-fix-login.md'].status).toBe('closed')
+    expect(stored['todos/1-fix-login.md'].tags).toEqual(['patched'])
   })
 
   test('does not crash when patching a non-existent entry', async () => {
-    await expect(patchMetaCacheEntry('99-ghost.md', { status: 'closed' })).resolves.toBeUndefined()
+    await expect(patchMetaCacheEntry('todos/99-ghost.md', { status: 'closed' })).resolves.toBeUndefined()
   })
 })

@@ -63,6 +63,8 @@ Cache is invalidated per-file by git blob SHA — stable across checkouts and cl
 
 **editor**: Command used to open todo files (e.g. `"nvim"`, `"code --wait"`). Falls back to `$EDITOR` if absent. Multi-word commands are split on whitespace before spawning.
 
+**paths**: Array of directory paths to search for todo files. Defaults to `["todos"]` if absent or empty. Paths may be relative to the project root or absolute. Absolute paths support todos tracked in different git repositories — git log/ls-files commands run against the correct repo for each path. New todos are created in the first configured path. `todo.url` always includes the source-path prefix (e.g. `todos/1-slug.md`, `work-todos/2-slug.md`). The meta cache key scheme changed from filename-relative-to-todos to full-path (`todos/1-slug.md`) in schema version 3.
+
 **display**: Style strings are space-separated tokens. Modifiers: `bold`, `dim`, `italic`, `underline`. Colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`. When a todo matches rules from multiple fields, all matched tokens are unioned and applied together.
 
 **views**: Each named view defines a reusable filtered+sorted slice of the todo list, invoked with `view <name>`. `include` conditions are ANDed (todo must match all); `exclude` conditions are ORed (todo is dropped if it matches any). `sort` is a multi-key list where each entry is `"<field>"` or `"<field> asc|desc"` (defaults to `asc`).
