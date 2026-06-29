@@ -366,6 +366,63 @@ describe('search', () => {
   })
 })
 
+describe('--json flag', () => {
+  test('all --json emits a JSON array with id/title/status/tags/dates', async () => {
+    const { out, exitCode } = await run('--json', 'all')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(Array.isArray(data)).toBe(true)
+    expect(data).toHaveLength(3)
+    const item = data.find((t: any) => t.id === '1')
+    expect(item.title).toBe('Fix login')
+    expect(item.status).toBe('active')
+    expect(item.tags).toContain('FE')
+    expect(item).toHaveProperty('createdAt')
+    expect(item).toHaveProperty('updatedAt')
+    expect(item).toHaveProperty('url')
+  })
+
+  test('with --json emits a filtered JSON array', async () => {
+    const { out, exitCode } = await run('--json', 'with', 'status', 'active')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(data.every((t: any) => t.status === 'active')).toBe(true)
+    expect(data.find((t: any) => t.id === '2')).toBeUndefined()
+  })
+
+  test('view --json emits a filtered JSON array', async () => {
+    const { out, exitCode } = await run('--json', 'view', 'bugs')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(data).toHaveLength(1)
+    expect(data[0].id).toBe('1')
+  })
+
+  test('search --json emits a JSON array', async () => {
+    const { out, exitCode } = await run('--json', 'search', 'Fix')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(data.some((t: any) => t.title === 'Fix login')).toBe(true)
+  })
+
+  test('<id> --json emits a single todo object with description', async () => {
+    const { out, exitCode } = await run('--json', '1')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(data.id).toBe('1')
+    expect(data.title).toBe('Fix login')
+    expect(data.description).toContain('Bug description')
+    expect(data.status).toBe('active')
+  })
+
+  test('--json flag can appear after the command', async () => {
+    const { out, exitCode } = await run('all', '--json')
+    expect(exitCode).toBe(0)
+    const data = JSON.parse(out)
+    expect(Array.isArray(data)).toBe(true)
+  })
+})
+
 describe('unrecognised input', () => {
   test('two-token unrecognised path shows help', async () => {
     // A single unknown token always routes to <id> (which then throws "not found").

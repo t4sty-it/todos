@@ -15,6 +15,7 @@ export interface Config {
     }
   }
   views?: { [name: string]: View }
+  json?: boolean
 }
 
 export const emptyConfig: Config = {}

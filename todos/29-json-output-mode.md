@@ -1,5 +1,5 @@
 ---
-status: new
+status: closed
 type: feat
 tags:
   - web

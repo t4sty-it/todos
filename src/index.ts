@@ -22,6 +22,12 @@ if (root) process.chdir(root)
 const todos = useTodoStore()
 const config = await useConfigStore().get()
 
+const args = process.argv.slice(2)
+if (args.includes('--json')) {
+  config.json = true
+  args.splice(args.indexOf('--json'), 1)
+}
+
 const router: Router<Route<string>, string> = select(
   help(() => router),
   version,
@@ -37,7 +43,6 @@ const router: Router<Route<string>, string> = select(
   todo(todos, config),
 )
 
-const args = process.argv.slice(2)
 if (args.length === 0) {
   write(helpText(router))
 } else {

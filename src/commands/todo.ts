@@ -1,7 +1,7 @@
 import { completing, doc, match, select, terminal, type Route, type Router } from "@/utils/router"
 import type { Config } from "@/config"
 import type { TodoStore } from "@/todoStore"
-import { detailDisplay, formatDiff, formatHistoryDate, shortDisplay } from "@/display"
+import { detailDisplay, formatDiff, formatHistoryDate, jsonDetailDisplay, shortDisplay } from "@/display"
 import { isAbsolute, dirname, relative } from "node:path"
 
 const readonlyFields = new Set(['id', 'url', 'createdAt', 'updatedAt'])
@@ -87,7 +87,7 @@ export const todo = (todos: TodoStore, config: Config): Router<Route<string>, st
         )))
       ),
       doc('<id>', 'Show full detail for a todo',
-        terminal(r => todos.get(r.params['id']!).then(t => detailDisplay(t, config)))
+        terminal(r => todos.get(r.params['id']!).then(t => config.json ? jsonDetailDisplay(t) : detailDisplay(t, config)))
       ),
     )
   )

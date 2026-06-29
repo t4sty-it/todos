@@ -55,6 +55,40 @@ export async function tableDisplay(todos: Todo[], config: Config): Promise<strin
   ).join('\n')
 }
 
+export async function jsonListDisplay(todos: Todo[]): Promise<string> {
+  const rows = await Promise.all(todos.map(async todo => {
+    const [createdAt, updatedAt] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
+    return {
+      id: todo.id,
+      url: todo.url,
+      title: todo.title,
+      status: todo.status ?? null,
+      type: todo.type ?? null,
+      tags: todo.tags ?? [],
+      ...(todo.extraFields ? { extraFields: todo.extraFields } : {}),
+      createdAt: createdAt?.toISOString() ?? null,
+      updatedAt: updatedAt?.toISOString() ?? null,
+    }
+  }))
+  return JSON.stringify(rows, null, 2)
+}
+
+export async function jsonDetailDisplay(todo: Todo): Promise<string> {
+  const [createdAt, updatedAt] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
+  return JSON.stringify({
+    id: todo.id,
+    url: todo.url,
+    title: todo.title,
+    description: todo.description?.trim() ?? null,
+    status: todo.status ?? null,
+    type: todo.type ?? null,
+    tags: todo.tags ?? [],
+    ...(todo.extraFields ? { extraFields: todo.extraFields } : {}),
+    createdAt: createdAt?.toISOString() ?? null,
+    updatedAt: updatedAt?.toISOString() ?? null,
+  }, null, 2)
+}
+
 export function formatHistoryDate(isoDate: string): string {
   const m = isoDate.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}(Z|[+-]\d{2}:\d{2})$/)
   if (!m) return isoDate
