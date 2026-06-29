@@ -19,7 +19,7 @@ todos <id>                               # show full detail for a single todo
 todos <id> edit                          # open the todo file in the configured editor
 todos <id> tag add <tag>                # add a tag (idempotent)
 todos <id> tag remove <tag>             # remove a tag
-todos <id> set <field> <value>          # update a field on a todo (status, type, title, description, tags)
+todos <id> set <field> <value>          # update a field on a todo (built-in or arbitrary; id/url/createdAt/updatedAt are read-only)
 todos <id> history                       # show git commit history for a todo with colorized diffs
 todos create <slug>                      # create a new todo (type: task, tags: untagged)
 todos create <type> <slug>              # create with a given type
@@ -39,7 +39,7 @@ Dates reflect when the file was first committed (`created`) and last committed (
 
 ### Search
 
-`todos search <query>` searches across all todo content — title, description, status, type, and tags — and returns two sets of results concatenated:
+`todos search <query>` searches across all todo content — title, description, status, type, tags, and any arbitrary fields — and returns two sets of results concatenated:
 
 1. **Exact matches**: todos whose content contains the query as a literal substring (case-insensitive)
 2. **Fuzzy matches**: todos whose content matches a regex built by interleaving each character of the query with `.*` — e.g. `todos search srch` matches any todo containing `search`, `scratch`, etc.
@@ -102,13 +102,14 @@ The numeric prefix before the first `-` is the todo's ID (e.g. `42-fix-login-bug
 status: active
 type: bug
 tags: FE, BE
+priority: high
 ---
 # Title of the todo
 
 Body / description goes here.
 ```
 
-- **Front matter** (optional): YAML block between `---` delimiters. Supported fields: `status`, `type`, `tags`
+- **Front matter** (optional): YAML block between `---` delimiters. Built-in fields: `status`, `type`, `tags`. Any other field whose value is a string or list of strings is treated as an arbitrary field (see below).
 - **Title**: the first `# Heading` line
 - **Description**: everything after the title line
 
@@ -126,7 +127,31 @@ tags:
   - BE
 ```
 
-When a field is updated with `set`, all other fields in the file are preserved exactly as written (no reformatting, no type coercion).
+### Arbitrary fields
+
+Any YAML key whose value is a `string` or `string[]` is treated as an arbitrary field. Arbitrary fields are:
+
+- listed by `todos fields`
+- filterable with `todos with <field> <value>`
+- viewable with `todos values <field>`
+- settable with `todos <id> set <field> <value>`
+- shown in `todos <id>` detail view
+- included in `todos search` results
+- usable in view `include`/`exclude`/`sort` conditions
+- cached in `.todos/meta.json` (the cache rebuilds when the blob SHA changes)
+
+```yaml
+---
+status: active
+priority: high
+team: backend
+affected-versions:
+  - v1.2
+  - v1.3
+---
+```
+
+When a field is updated with `set`, all other fields in the file are preserved exactly as written (no reformatting, no type coercion). `set` always writes the value as a string; use `edit` to set an array value.
 
 ## Configuration
 

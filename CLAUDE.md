@@ -13,12 +13,12 @@ bun run deploy       # compile and install binary to $HOME/.bin/todos and comple
 
 ## Architecture
 
-This is a CLI tool for browsing and filtering markdown-based todo files stored in `todos/`. Each `.md` file is a todo: YAML front matter holds structured fields (`status`, `type`, `tags`), and a `# Title` heading plus body form the content.
+This is a CLI tool for browsing and filtering markdown-based todo files stored in `todos/`. Each `.md` file is a todo: YAML front matter holds structured fields (`status`, `type`, `tags`) plus arbitrary fields (any YAML key whose value is a `string` or `string[]`), and a `# Title` heading plus body form the content.
 
 ### Data layer
 
-- `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store; exports `parseTitle`
-- `src/todoStore.ts` — the active store; exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `search(query)`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`). **Listing operations** (`all`, `fields`, `fieldValues`, `filterBy`, `view`) are served from the meta cache without reading any todo files. `get(id)` reads one file for `description` and re-attaches date thunks from the listing. `search(query)` reads all files to include description in matching (see below). Write operations (`tag`, `set`) mutate the in-memory meta cache Map in-place so the listing stays consistent across the internal todos-cache reset. `reload()` resets both the todos cache and the meta cache.
+- `src/todos.ts` — parses a single `.md` file into a `Todo` object; the `Todo` interface includes optional lazy thunks `createdAt?` and `updatedAt?` (both `() => Promise<Date | undefined>`) that are populated by the store; arbitrary front matter fields land in `extraFields?: Record<string, string | string[]>`; exports `parseTitle`
+- `src/todoStore.ts` — the active store; exposes `all()`, `get(id)`, `tag(id, op, tag)`, `fields()`, `fieldValues()`, `filterBy()`, `search(query)`, `create(slug, type?, tags?)`, `view(config: View)`, `reload()`; `set()` rejects writes to read-only fields (`id`, `url`, `createdAt`, `updatedAt`). **Listing operations** (`all`, `fields`, `fieldValues`, `filterBy`, `view`) are served from the meta cache without reading any todo files. `get(id)` reads one file for `description` and re-attaches date thunks from the listing. `search(query)` reads all files to include description in matching (see below). Write operations (`tag`, `set`) mutate the in-memory meta cache Map in-place so the listing stays consistent across the internal todos-cache reset. `reload()` resets both the todos cache and the meta cache. `fields()` returns `string[]` (not `keyof Todo`) and includes keys from `extraFields`. `fieldValues()`, `filterBy()`, and `set()` all accept `string` field names and route to `extraFields` for non-built-in keys.
 - `src/metaCache.ts` — persistent git-backed metadata cache; reads/writes `.todos/meta.json`; on first access per process it runs one `git ls-files` call to get blob SHAs for all tracked todo files, reads file content and fetches `git log` dates for stale files, then writes the updated cache; exposed as `loadMetaCache()` (memoized, resettable via `resetMetaCache()`); entries with missing or invalid dates are silently omitted from the returned Map
 
 `.todos/meta.json` schema:
@@ -26,18 +26,19 @@ This is a CLI tool for browsing and filtering markdown-based todo files stored i
 {
   "<filename>.md": {
     "blobSha": "<sha>",
-    "schemaVersion": 2,
+    "schemaVersion": 4,
     "createdAt": "<ISO 8601>",
     "updatedAt": "<ISO 8601>",
     "id": "<id>",
     "title": "<title>",
     "status": "<status>",
     "type": "<type>",
-    "tags": ["<tag>"]
+    "tags": ["<tag>"],
+    "extraFields": { "<key>": "<string or string[]>" }
   }
 }
 ```
-Cache is invalidated per-file by git blob SHA — stable across checkouts and clones, unlike mtime. `schemaVersion` guards against stale entries that predate new fields (increment it when adding fields). Untracked files (not yet committed) are not in the cache; the store falls back to reading those from disk. The `.todos/` directory should be added to `.gitignore`.
+Cache is invalidated per-file by git blob SHA — stable across checkouts and clones, unlike mtime. `schemaVersion` guards against stale entries that predate new fields (current value: `4`; increment it when adding fields to the cache schema). Untracked files (not yet committed) are not in the cache; the store falls back to reading those from disk. The `.todos/` directory should be added to `.gitignore`.
 
 ### Config layer
 
@@ -122,7 +123,7 @@ Tags tokens are distinguished from type/slug tokens by a leading `#`.
 
 Listing commands (`all`, `with`, `view`, `search`) render via `tableDisplay(todos)`, which resolves all date thunks in parallel, then formats output as a fixed-width table with columns: `#id`, `title`, `created → updated` (datetimes in local time, `YYYY-MM-DD HH:MM`). `create` and `set` use `shortDisplay` (compact, no dates).
 
-**Search** (`search <query>`): reads every todo file in full (bypassing the meta cache, so description is included). Returns two deduped sections concatenated: (1) exact matches — todos whose searchable text (title + description + status + type + tags) contains the query as a literal substring (case-insensitive); (2) fuzzy matches — todos matching a regex built by interleaving each character of the query with `.*` (e.g. `"srch"` → `/s.*r.*c.*h/i`). Special regex characters in the query are escaped before building the pattern. Multi-word queries (e.g. `search hello world`) are passed as a single string, so exact matching looks for the phrase `"hello world"` and fuzzy matching builds the pattern from all characters including the space.
+**Search** (`search <query>`): reads every todo file in full (bypassing the meta cache, so description is included). Returns two deduped sections concatenated: (1) exact matches — todos whose searchable text (title + description + status + type + tags + all extraFields values) contains the query as a literal substring (case-insensitive); (2) fuzzy matches — todos matching a regex built by interleaving each character of the query with `.*` (e.g. `"srch"` → `/s.*r.*c.*h/i`). Special regex characters in the query are escaped before building the pattern. Multi-word queries (e.g. `search hello world`) are passed as a single string, so exact matching looks for the phrase `"hello world"` and fuzzy matching builds the pattern from all characters including the space.
 
 **History** (`<id> history`): runs `git log` to list all commits that touched the todo file, newest first. For each commit, runs `git show --format= --no-color -p` to retrieve the raw patch. `formatHistoryDate` parses the git ISO 8601 author date string and formats it as `YYYY-MM-DD HH:MM GMT±N` using the author's timezone offset. `formatDiff` strips file-header lines (`diff --git`, `index`, `---`, `+++`, `new file`, `deleted file`), indents each remaining line 4 spaces, and applies ANSI background colors — green (`\x1b[42m`) for added lines, red (`\x1b[41m`) for removed lines, dim (`\x1b[2m`) for hunk headers.
 
