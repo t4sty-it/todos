@@ -81,11 +81,19 @@ const compareValues = (a: string, b: string): number => {
 export const applyView = <T extends object>(items: T[], view: View): T[] => {
   let result = items
 
+  const getItemField = (item: T, field: string): unknown => {
+    const v = (item as Record<string, unknown>)[field]
+    if (v !== undefined) return v
+    return (item as Record<string, unknown>)['extraFields'] != null
+      ? ((item as Record<string, unknown>)['extraFields'] as Record<string, unknown>)[field]
+      : undefined
+  }
+
   if (view.include && view.include.length > 0) {
     result = result.filter(item =>
       view.include!.every(condition => {
         const [field, expected] = Object.entries(condition)[0]!
-        const actual = (item as Record<string, unknown>)[field]
+        const actual = getItemField(item, field)
         if (Array.isArray(actual)) return actual.includes(expected)
         return actual === expected
       })
@@ -96,7 +104,7 @@ export const applyView = <T extends object>(items: T[], view: View): T[] => {
     result = result.filter(item =>
       !view.exclude!.some(condition => {
         const [field, expected] = Object.entries(condition)[0]!
-        const actual = (item as Record<string, unknown>)[field]
+        const actual = getItemField(item, field)
         if (Array.isArray(actual)) return actual.includes(expected)
         return actual === expected
       })
@@ -109,8 +117,8 @@ export const applyView = <T extends object>(items: T[], view: View): T[] => {
         const [field, dir] = entry.trim().split(/\s+/)
         const direction = dir?.toLowerCase() === 'desc' ? -1 : 1
         const cmp = compareValues(
-          String((a as Record<string, unknown>)[field!] ?? ''),
-          String((b as Record<string, unknown>)[field!] ?? ''),
+          String(getItemField(a, field!) ?? ''),
+          String(getItemField(b, field!) ?? ''),
         )
         if (cmp !== 0) return cmp * direction
       }

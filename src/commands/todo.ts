@@ -1,5 +1,4 @@
 import { completing, doc, match, select, terminal, type Route, type Router } from "@/utils/router"
-import type { Todo } from "@/todos"
 import type { Config } from "@/config"
 import type { TodoStore } from "@/todoStore"
 import { detailDisplay, formatDiff, formatHistoryDate, shortDisplay } from "@/display"
@@ -46,7 +45,7 @@ async function historyDisplay(todoId: string, todos: TodoStore): Promise<string>
 }
 
 export const todo = (todos: TodoStore, config: Config): Router<Route<string>, string> =>
-  completing(() => todos.fieldValues('id' as keyof Todo), 'id',
+  completing(() => todos.fieldValues('id'), 'id',
     select(
       doc('<id> history', 'Show git history for a todo with diffs',
         match('history', terminal(r => historyDisplay(r.params['id']!, todos)))
@@ -56,10 +55,10 @@ export const todo = (todos: TodoStore, config: Config): Router<Route<string>, st
           completing(
             () => todos.fields().then(fs => fs.filter(f => !readonlyFields.has(f))),
             'field',
-            completing(p => todos.fieldValues(p['field'] as keyof Todo), 'value',
+            completing(p => todos.fieldValues(p['field']!), 'value',
               terminal(r => todos.set(
                 r.params['id']!,
-                r.params['field'] as keyof Todo,
+                r.params['field']!,
                 r.params['value']!
               ).then(t => shortDisplay(t, config)))
             )
@@ -78,12 +77,12 @@ export const todo = (todos: TodoStore, config: Config): Router<Route<string>, st
         }))
       ),
       doc('<id> tag add <tag>', 'Add a tag to a todo (idempotent)',
-        match('tag', match('add', completing(() => todos.fieldValues('tags' as keyof Todo), 'tag',
+        match('tag', match('add', completing(() => todos.fieldValues('tags'), 'tag',
           terminal(r => todos.tag(r.params['id']!, 'add', r.params['tag']!).then(t => shortDisplay(t, config)))
         )))
       ),
       doc('<id> tag remove <tag>', 'Remove a tag from a todo',
-        match('tag', match('remove', completing(() => todos.fieldValues('tags' as keyof Todo), 'tag',
+        match('tag', match('remove', completing(() => todos.fieldValues('tags'), 'tag',
           terminal(r => todos.tag(r.params['id']!, 'remove', r.params['tag']!).then(t => shortDisplay(t, config)))
         )))
       ),

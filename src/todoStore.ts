@@ -9,16 +9,23 @@ import { useConfigStore } from "./configStore";
 
 export interface TodoStore {
   all(): Promise<Todo[]>,
-  fields(): Promise<(keyof Todo)[]>,
-  fieldValues(field: keyof Todo): Promise<string[]>,
-  filterBy(field: keyof Todo, value: string): Promise<Todo[]>,
+  fields(): Promise<string[]>,
+  fieldValues(field: string): Promise<string[]>,
+  filterBy(field: string, value: string): Promise<Todo[]>,
   search(query: string): Promise<Todo[]>,
   get(id: string): Promise<Todo>,
   reload(): void,
   tag(id: string, op: 'add' | 'remove', tag: string): Promise<Todo>,
-  set(id: string, field: keyof Todo, value: string): Promise<Todo>,
+  set(id: string, field: string, value: string): Promise<Todo>,
   create(slug: string, type?: string, tags?: string[]): Promise<Todo>,
   view(config: View): Promise<Todo[]>
+}
+
+const KNOWN_TODO_FIELDS = new Set(['id', 'url', 'title', 'description', 'status', 'type', 'tags', 'extraFields', 'createdAt', 'updatedAt'])
+
+const getField = (todo: Todo, field: string): string | string[] | undefined => {
+  if (KNOWN_TODO_FIELDS.has(field)) return todo[field as keyof Todo] as string | string[] | undefined
+  return todo.extraFields?.[field]
 }
 
 export const useTodoStore = (): TodoStore => {
@@ -42,12 +49,13 @@ export const useTodoStore = (): TodoStore => {
   return {
     all: () => todos(),
     fields: async () => {
-      const result = new Set<keyof Todo>()
+      const result = new Set<string>()
       await todos().then(todos => {
         for (const todo of todos) {
           if (todo.status) result.add('status')
           if (todo.tags) result.add('tags')
           if (todo.type) result.add('type')
+          for (const key of Object.keys(todo.extraFields ?? {})) result.add(key)
         }
       })
 
@@ -57,12 +65,9 @@ export const useTodoStore = (): TodoStore => {
       const result = new Set<string>()
       await todos().then(todos => {
         for (const todo of todos) {
-          if (todo[field]) {
-            if (typeof todo[field] == 'string')
-              result.add(todo[field])
-            if (Array.isArray(todo[field]))
-              todo[field].forEach(value => result.add(value))
-          }
+          const v = getField(todo, field)
+          if (typeof v === 'string') result.add(v)
+          else if (Array.isArray(v)) v.forEach(value => result.add(value))
         }
       })
 
@@ -70,7 +75,7 @@ export const useTodoStore = (): TodoStore => {
     },
     filterBy: async (field, value) => {
       return (await todos()).filter(todo => {
-        const v = todo[field]
+        const v = getField(todo, field)
         if (value === '') return v == null || v === '' || (Array.isArray(v) && v.length === 0)
         return typeof v === 'string'
           ? v === value
@@ -110,7 +115,8 @@ export const useTodoStore = (): TodoStore => {
         todo.description ?? '',
         todo.status ?? '',
         todo.type ?? '',
-        ...(todo.tags ?? [])
+        ...(todo.tags ?? []),
+        ...Object.values(todo.extraFields ?? {}).flat()
       ].join(' ')
 
       const exact = withContent.filter(t => searchText(t).toLowerCase().includes(query.toLowerCase()))
@@ -161,7 +167,7 @@ export const useTodoStore = (): TodoStore => {
       return applyView(all, viewConfig)
     },
     set: async (id, field, value) => {
-      const readonlyFields: (keyof Todo)[] = ['id', 'url', 'createdAt', 'updatedAt']
+      const readonlyFields = ['id', 'url', 'createdAt', 'updatedAt']
       if (readonlyFields.includes(field)) throw new Error(`Field "${field}" is read-only`)
       const all = await todos()
       const todo = all.find(t => t.id === id)
@@ -175,6 +181,12 @@ export const useTodoStore = (): TodoStore => {
       else if (field === 'status') await patchMetaCacheEntry(todo.url, { status: value })
       else if (field === 'type') await patchMetaCacheEntry(todo.url, { type: value })
       else if (field === 'tags') await patchMetaCacheEntry(todo.url, { tags: value.split(',').map(s => s.trim()) })
+      else {
+        const newExtraFields = { ...(todo.extraFields ?? {}), [field]: value }
+        await patchMetaCacheEntry(todo.url, { extraFields: newExtraFields })
+        todos = useCache(buildAllListings)
+        return { ...todo, extraFields: newExtraFields }
+      }
 
       todos = useCache(buildAllListings)
       return { ...todo, [field]: value }
@@ -220,6 +232,7 @@ const buildListing = async (folderPath: string): Promise<Todo[]> => {
           status: cached.status,
           type: cached.type,
           tags: cached.tags,
+          extraFields: cached.extraFields,
           createdAt: () => Promise.resolve(cached.createdAt),
           updatedAt: () => Promise.resolve(cached.updatedAt),
         } satisfies Todo

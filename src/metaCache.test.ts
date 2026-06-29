@@ -74,7 +74,7 @@ describe('loadMetaCache', () => {
     const raw = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
     const entry = raw['todos/1-fix-login.md']
     expect(entry).toBeDefined()
-    expect(entry.schemaVersion).toBe(3)
+    expect(entry.schemaVersion).toBe(4)
     expect(typeof entry.blobSha).toBe('string')
     expect(entry.blobSha.length).toBeGreaterThan(0)
     expect(entry.id).toBe('1')
@@ -126,7 +126,7 @@ describe('loadMetaCache', () => {
     await loadMetaCache()
 
     const rebuilt = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    expect(rebuilt['todos/1-fix-login.md'].schemaVersion).toBe(3)
+    expect(rebuilt['todos/1-fix-login.md'].schemaVersion).toBe(4)
   })
 
   test('includes todos from subdirectories', async () => {

@@ -11,18 +11,24 @@ export const fmt = (d: Date | undefined) => d
   ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   : '—'
 
+const flatFields = (todo: Todo): Record<string, unknown> =>
+  ({ ...todo, ...(todo.extraFields ?? {}) }) as Record<string, unknown>
+
 export function shortDisplay(todo: Todo, config: Config): string {
-  return applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
+  return applyDisplay(`#${todo.id} - ${todo.title}`, flatFields(todo), config)
 }
 
 export async function detailDisplay(todo: Todo, config: Config): Promise<string> {
   const [created, updated] = await Promise.all([todo.createdAt?.(), todo.updatedAt?.()])
-  const header = applyDisplay(`#${todo.id} - ${todo.title}`, todo as unknown as Record<string, unknown>, config)
+  const header = applyDisplay(`#${todo.id} - ${todo.title}`, flatFields(todo), config)
   const lines: string[] = [header, '─'.repeat(40)]
 
   if (todo.status)       lines.push(`status:  ${todo.status}`)
   if (todo.type)         lines.push(`type:    ${todo.type}`)
   if (todo.tags?.length) lines.push(`tags:    ${todo.tags.join(', ')}`)
+  for (const [key, val] of Object.entries(todo.extraFields ?? {})) {
+    lines.push(`${key.padEnd(8)} ${Array.isArray(val) ? val.join(', ') : val}`)
+  }
   lines.push(`created: ${fmt(created)}`)
   lines.push(`updated: ${fmt(updated)}`)
 
@@ -43,7 +49,7 @@ export async function tableDisplay(todos: Todo[], config: Config): Promise<strin
   return rows.map(({ todo, id, title, dates }) =>
     applyDisplay(
       `${id.padEnd(idWidth)}  ${title.padEnd(titleWidth)}  ${dates}`,
-      todo as unknown as Record<string, unknown>,
+      flatFields(todo),
       config
     )
   ).join('\n')

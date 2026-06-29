@@ -3,7 +3,7 @@ import { basename, resolve, relative, join } from 'node:path'
 import { useCache } from './utils/useCache'
 import { parse, FILENAME_RE } from './todos'
 
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 interface MetaEntry {
   blobSha: string
@@ -15,6 +15,7 @@ interface MetaEntry {
   status?: string
   type?: string
   tags?: string[]
+  extraFields?: Record<string, string | string[]>
 }
 
 type MetaStore = Record<string, MetaEntry>
@@ -27,6 +28,7 @@ export type MetaMapEntry = {
   status?: string
   type?: string
   tags?: string[]
+  extraFields?: Record<string, string | string[]>
 }
 
 const cacheDir = '.todos'
@@ -119,14 +121,14 @@ const buildMetaCache = async (paths: string[]): Promise<Map<string, MetaMapEntry
         if (!createdAt || !updatedAt) {
           process.stderr.write(`Warning: no git dates found for ${filename} (may not be committed yet); it will be excluded from listings\n`)
         }
-        const { title, status, type, tags } = parse(text, filename)
+        const { title, status, type, tags, extraFields } = parse(text, filename)
         return {
           filename,
           blobSha: info.sha,
           schemaVersion: SCHEMA_VERSION,
           createdAt, updatedAt,
           id: FILENAME_RE.exec(basename(filename))![1]!,
-          title, status, type, tags,
+          title, status, type, tags, extraFields,
         }
       })
     )).filter(u => u !== null)
@@ -147,6 +149,7 @@ const buildMetaCache = async (paths: string[]): Promise<Map<string, MetaMapEntry
         createdAt, updatedAt,
         id: entry.id, title: entry.title,
         status: entry.status, type: entry.type, tags: entry.tags,
+        extraFields: entry.extraFields,
       })
     } else if (blobShas.has(filename)) {
       process.stderr.write(`Warning: ${filename} has invalid dates in cache; it will be excluded from listings\n`)
@@ -168,7 +171,7 @@ export const setMetaCachePaths = (paths: string[]) => {
 export const loadMetaCache = () => _cache()
 export const resetMetaCache = () => { _cache = useCache(() => buildMetaCache(_paths)) }
 
-type MetaCachePatch = Partial<Pick<MetaMapEntry, 'title' | 'status' | 'type' | 'tags'>>
+type MetaCachePatch = Partial<Pick<MetaMapEntry, 'title' | 'status' | 'type' | 'tags' | 'extraFields'>>
 
 export const patchMetaCacheEntry = async (filename: string, updates: MetaCachePatch) => {
   const map = await loadMetaCache()
