@@ -21,15 +21,16 @@ export const parse = (text: string, url: string): Todo => ({
   url,
   title: parseTitle(text),
   description: parseDescription(text),
-  ...parseFrontMatter(text)
+  ...parseFrontMatter(text, url)
 })
 
 const frontMatterRegex = /^---$((.*)\n)*---$/m
 const titleRegex = /^# (.*)$/m
 
-const KNOWN_FIELDS = new Set(['status', 'type', 'tags'])
+const YAML_BUILTIN_FIELDS = new Set(['status', 'type', 'tags'])
+const RESERVED_FIELDS = new Set(['title', 'description', 'id', 'url', 'createdAt', 'updatedAt', 'extraFields'])
 
-const parseFrontMatter = (text: string): Partial<{status: string, type: string, tags: string[], extraFields: Record<string, string | string[]>}> => {
+const parseFrontMatter = (text: string, url: string): Partial<{status: string, type: string, tags: string[], extraFields: Record<string, string | string[]>}> => {
   const match = frontMatterRegex.exec(text)
   if (match == null) return {}
 
@@ -41,7 +42,11 @@ const parseFrontMatter = (text: string): Partial<{status: string, type: string, 
 
   const extraFields: Record<string, string | string[]> = {}
   for (const [key, val] of Object.entries(obj)) {
-    if (KNOWN_FIELDS.has(key)) continue
+    if (YAML_BUILTIN_FIELDS.has(key)) continue
+    if (RESERVED_FIELDS.has(key)) {
+      process.stderr.write(`Warning: ${url}: front matter key "${key}" is reserved and will be ignored\n`)
+      continue
+    }
     if (typeof val === 'string') extraFields[key] = val
     else if (Array.isArray(val) && val.every(v => typeof v === 'string')) extraFields[key] = val as string[]
   }
