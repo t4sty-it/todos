@@ -1,9 +1,8 @@
 ---
-status: new
+status: done
 type: bug
 tags:
   - untagged
-
 ---
 # missing newline
 

@@ -44,14 +44,14 @@ const router: Router<Route<string>, string> = select(
 )
 
 if (args.length === 0) {
-  write(helpText(router))
+  write(helpText(router) + '\n')
 } else {
   try {
     const r = await router(route(args.join('/'), ''))
     if (r._tag === 'RouteNotFound') {
-      write(helpText(router))
+      write(helpText(router) + '\n')
     } else {
-      write(r.value)
+      write(r.value + '\n')
     }
   } catch (e) {
     process.stderr.write(`Error: ${e instanceof Error ? e.message : e}\n`)
