@@ -14,6 +14,7 @@ import { views } from './commands/views'
 import { view } from './commands/view'
 import { search } from './commands/search'
 import { create } from './commands/create'
+import { init } from './commands/init'
 import { todo } from './commands/todo'
 
 const root = findProjectRoot(process.cwd())
@@ -40,6 +41,7 @@ const router: Router<Route<string>, string> = select(
   view(todos, config),
   search(todos, config),
   create(todos, config),
+  init(),
   todo(todos, config),
 )
 

@@ -4,7 +4,17 @@ A CLI tool for browsing and filtering markdown-based todo files.
 
 ## Usage
 
-Run from a directory that contains a `todos/` folder:
+### Initializing a new project
+
+```bash
+todos init
+```
+
+Run this once in an empty directory to create a `todos/` folder and a `todosConfig.json` pre-populated with a sample configuration. Errors if either already exists.
+
+### Commands
+
+Run from a directory that contains a `todos/` folder (or any ancestor that contains `todosConfig.json`):
 
 ```bash
 todos --help                             # show this command listing

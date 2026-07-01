@@ -108,6 +108,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`c
 | `with/<field>/<value>` | Filter todos by field value, table format; empty string matches absent/empty fields |
 | `view/<name>` | Apply a named view from config, table format |
 | `search <query>` | Search todos by content; exact matches first, then fuzzy |
+| `init` | Initialize a new todos project: creates `todos/` and `todosConfig.json` from the sample template; errors if either already exists |
 | `create <slug>` | Create a todo (type defaults to `task`) |
 | `create <type> <slug>` | Create a todo with a given type |
 | `create <slug> #<tags>` | Create a todo with comma-separated tags |

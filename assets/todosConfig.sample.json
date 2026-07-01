@@ -1,0 +1,56 @@
+{
+  "display": {
+    "type": {
+      "bug": "red",
+      "feature": "italic blue"
+    },
+    "status": {
+      "active": "bold",
+      "done": "gray"
+    }
+  },
+  "views": {
+    "features": {
+      "include": [
+        {
+          "type": "feature"
+        }
+      ],
+      "exclude": [
+        {
+          "status": "done"
+        }
+      ],
+      "sort": [
+        "id desc"
+      ]
+    },
+    "bugs": {
+      "include": [
+        {
+          "type": "bug"
+        }
+      ],
+      "exclude": [
+        {
+          "status": "done"
+        }
+      ],
+      "sort": [
+        "id desc"
+      ]
+    },
+
+    "backlog": {
+      "include": [
+        { "status": "new" }
+      ],
+      "sort": [ "type asc", "id desc" ]
+    }
+  },
+  "editor": "vim",
+  "paths": [
+    "todos",
+    "another-todos-folder"
+  ]
+}
