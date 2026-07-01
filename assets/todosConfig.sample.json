@@ -1,4 +1,20 @@
 {
+  // Command used to open todo files. Falls back to $EDITOR if absent.
+  // Used by: todos <id> edit
+  "editor": "vim",
+
+  // Directories to search for todo files (relative or absolute paths).
+  // New todos are created in the first path. Defaults to ["todos"] if absent.
+  // Used by: all listing and write commands
+  "paths": [
+    "todos",
+    "another-todos-folder"
+  ],
+
+  // Style rules applied to table output. Each field maps values to style strings.
+  // Style tokens — colors: black, red, green, yellow, blue, magenta, cyan, white, gray
+  //              — modifiers: bold, dim, italic, underline
+  // Used by: todos all, todos with <field> <value>, todos view <name>, todos search <query>
   "display": {
     "type": {
       "bug": "red",
@@ -9,48 +25,26 @@
       "done": "gray"
     }
   },
+
+  // Named filtered+sorted slices of the todo list.
+  // Used by: todos view <name>   (list available names: todos views)
   "views": {
     "features": {
-      "include": [
-        {
-          "type": "feature"
-        }
-      ],
-      "exclude": [
-        {
-          "status": "done"
-        }
-      ],
-      "sort": [
-        "id desc"
-      ]
+      // include: ANDed — todo must match all conditions
+      "include": [{ "type": "feature" }],
+      // exclude: ORed — todo is dropped if it matches any condition
+      "exclude": [{ "status": "done" }],
+      // sort: multi-key; each entry is "<field>" or "<field> asc|desc" (default asc)
+      "sort": ["id desc"]
     },
     "bugs": {
-      "include": [
-        {
-          "type": "bug"
-        }
-      ],
-      "exclude": [
-        {
-          "status": "done"
-        }
-      ],
-      "sort": [
-        "id desc"
-      ]
+      "include": [{ "type": "bug" }],
+      "exclude": [{ "status": "done" }],
+      "sort": ["id desc"]
     },
-
     "backlog": {
-      "include": [
-        { "status": "new" }
-      ],
-      "sort": [ "type asc", "id desc" ]
+      "include": [{ "status": "new" }],
+      "sort": ["type asc", "id desc"]
     }
-  },
-  "editor": "vim",
-  "paths": [
-    "todos",
-    "another-todos-folder"
-  ]
+  }
 }
