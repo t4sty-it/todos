@@ -3,7 +3,6 @@ status: new
 type: feat
 tags:
   - web
-title: HTTP server mode (todos serve)
 blocked-by: #29
 ---
 # HTTP server mode (todos serve)
