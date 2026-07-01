@@ -267,6 +267,85 @@ describe('search', () => {
   })
 })
 
+describe('references', () => {
+  let refDir: string
+  let prevCwd: string
+
+  const git = async (...args: string[]) => {
+    const proc = Bun.spawn(['git', ...args], { cwd: refDir, stdout: 'pipe', stderr: 'pipe' })
+    await proc.exited
+  }
+
+  const commit = async (msg = 'test') => {
+    await git('add', 'todos/')
+    await git('commit', '-m', msg)
+  }
+
+  beforeAll(async () => {
+    refDir = join(tmpdir(), 'todos-refs-test-' + Math.random().toString(36).slice(2))
+    await mkdir(join(refDir, 'todos'), { recursive: true })
+    await git('init')
+    await git('config', 'user.name', 'Test User')
+    await git('config', 'user.email', 'test@test.com')
+    await writeFile(join(refDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(refDir, 'todos', '2-add-export.md'), TODO_2)
+    await commit('base todos')
+  })
+
+  afterAll(async () => {
+    await rm(refDir, { recursive: true, force: true })
+  })
+
+  beforeEach(async () => {
+    // Remove any extra todos added by previous tests
+    for (const f of await (await import('node:fs/promises')).readdir(join(refDir, 'todos'))) {
+      if (!['1-fix-login.md', '2-add-export.md'].includes(f))
+        await rm(join(refDir, 'todos', f))
+    }
+    await rm(join(refDir, '.todos'), { recursive: true, force: true })
+    resetMetaCache()
+    prevCwd = process.cwd()
+    process.chdir(refDir)
+  })
+
+  afterEach(() => { process.chdir(prevCwd) })
+
+  const addAndCommit = async (filename: string, content: string) => {
+    await writeFile(join(refDir, 'todos', filename), content)
+    await commit(`add ${filename}`)
+    resetMetaCache()
+  }
+
+  test('finds todos that mention #id in title', async () => {
+    await addAndCommit('4-ref-title.md', `---\nstatus: new\ntype: task\n---\n# Depends on #1\n`)
+    const results = await useTodoStore().references('1')
+    expect(results.some(t => t.id === '4')).toBe(true)
+  })
+
+  test('finds todos that mention #id in description', async () => {
+    await addAndCommit('4-ref-desc.md', `---\nstatus: new\ntype: task\n---\n# Some task\n\nBlocks #1.\n`)
+    const results = await useTodoStore().references('1')
+    expect(results.some(t => t.id === '4')).toBe(true)
+  })
+
+  test('finds todos that mention #id in extraFields', async () => {
+    await addAndCommit('4-ref-field.md', `---\nstatus: new\ntype: task\nblocks: "#1"\n---\n# Some task\n`)
+    const results = await useTodoStore().references('1')
+    expect(results.some(t => t.id === '4')).toBe(true)
+  })
+
+  test('returns empty array when no todos reference the id', async () => {
+    const results = await useTodoStore().references('99')
+    expect(results).toHaveLength(0)
+  })
+
+  test('does not match a longer id that starts with the same digits', async () => {
+    await addAndCommit('4-no-match.md', `---\nstatus: new\ntype: task\n---\n# Depends on #10\n`)
+    const results = await useTodoStore().references('1')
+    expect(results.some(t => t.id === '4')).toBe(false)
+  })
+})
+
 describe('reload', () => {
   test('picks up a file written externally after the cache was populated', async () => {
     const store = useTodoStore()

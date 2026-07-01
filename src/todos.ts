@@ -63,6 +63,9 @@ const parseFrontMatter = (text: string, url: string): Partial<{status: string, t
 }
 
 export const parseTitle = (text: string) => titleRegex.exec(text)?.at(1) ?? ''
+
+export const extractRefs = (text: string): string[] =>
+  [...new Set([...text.matchAll(/(?<!\d)#(\d+)(?!\d)/g)].map(m => m[1]!))]
 const parseDescription = (text: string) => {
   const lines = text.split('\n')
   const titleLineIdx = lines.findIndex(line => line.startsWith('# '))

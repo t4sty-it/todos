@@ -1,4 +1,4 @@
-import { parse, patch, stringify, FILENAME_RE, type Todo } from "./todos";
+import { parse, patch, stringify, extractRefs, FILENAME_RE, type Todo } from "./todos";
 import { applyView, type View } from "./config";
 
 import { readdir, writeFile } from 'node:fs/promises';
@@ -13,6 +13,7 @@ export interface TodoStore {
   fieldValues(field: string): Promise<string[]>,
   filterBy(field: string, value: string): Promise<Todo[]>,
   search(query: string): Promise<Todo[]>,
+  references(id: string): Promise<Todo[]>,
   get(id: string): Promise<Todo>,
   reload(): void,
   tag(id: string, op: 'add' | 'remove', tag: string): Promise<Todo>,
@@ -130,6 +131,22 @@ export const useTodoStore = (): TodoStore => {
 
       return [...exact, ...fuzzy]
     },
+    references: async (id: string) => {
+      const meta = await loadMetaCache()
+      return [...meta.entries()]
+        .filter(([, entry]) => entry.referencedIds?.includes(id))
+        .map(([url, entry]) => ({
+          id: entry.id,
+          url,
+          title: entry.title,
+          status: entry.status,
+          type: entry.type,
+          tags: entry.tags,
+          extraFields: entry.extraFields,
+          createdAt: () => Promise.resolve(entry.createdAt),
+          updatedAt: () => Promise.resolve(entry.updatedAt),
+        } satisfies Todo))
+    },
     get: async id => {
       const listing = (await todos()).find(t => t.id === id)
       if (!listing) throw new Error(`Todo not found: ${id}`)
@@ -175,15 +192,17 @@ export const useTodoStore = (): TodoStore => {
 
       const filePath = todo.url
       const text = await Bun.file(filePath).text()
-      await writeFile(filePath, patch(text, field, value))
+      const patchedText = patch(text, field, value)
+      await writeFile(filePath, patchedText)
+      const referencedIds = extractRefs(patchedText)
 
-      if (field === 'title') await patchMetaCacheEntry(todo.url, { title: value })
+      if (field === 'title') await patchMetaCacheEntry(todo.url, { title: value, referencedIds })
       else if (field === 'status') await patchMetaCacheEntry(todo.url, { status: value })
       else if (field === 'type') await patchMetaCacheEntry(todo.url, { type: value })
       else if (field === 'tags') await patchMetaCacheEntry(todo.url, { tags: value.split(',').map(s => s.trim()) })
       else {
         const newExtraFields = { ...(todo.extraFields ?? {}), [field]: value }
-        await patchMetaCacheEntry(todo.url, { extraFields: newExtraFields })
+        await patchMetaCacheEntry(todo.url, { extraFields: newExtraFields, referencedIds })
         todos = useCache(buildAllListings)
         return { ...todo, extraFields: newExtraFields }
       }

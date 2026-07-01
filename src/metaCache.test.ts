@@ -74,7 +74,7 @@ describe('loadMetaCache', () => {
     const raw = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
     const entry = raw['todos/1-fix-login.md']
     expect(entry).toBeDefined()
-    expect(entry.schemaVersion).toBe(4)
+    expect(entry.schemaVersion).toBe(5)
     expect(typeof entry.blobSha).toBe('string')
     expect(entry.blobSha.length).toBeGreaterThan(0)
     expect(entry.id).toBe('1')
@@ -126,7 +126,7 @@ describe('loadMetaCache', () => {
     await loadMetaCache()
 
     const rebuilt = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
-    expect(rebuilt['todos/1-fix-login.md'].schemaVersion).toBe(4)
+    expect(rebuilt['todos/1-fix-login.md'].schemaVersion).toBe(5)
   })
 
   test('includes todos from subdirectories', async () => {
@@ -192,6 +192,63 @@ describe('loadMetaCache', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+})
+
+describe('referencedIds in meta cache', () => {
+  test('stores ids referenced via #N in the title', async () => {
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-depends-on-1.md'),
+      `---\nstatus: new\ntype: task\n---\n# Depends on #1\n`)
+    await commit()
+
+    const map = await loadMetaCache()
+    expect(map.get('todos/2-depends-on-1.md')!.referencedIds).toEqual(['1'])
+    expect(map.get('todos/1-fix-login.md')!.referencedIds).toBeUndefined()
+  })
+
+  test('stores ids referenced via #N in the description', async () => {
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-blocks.md'),
+      `---\nstatus: new\ntype: task\n---\n# Some task\n\nBlocks #1.\n`)
+    await commit()
+
+    const map = await loadMetaCache()
+    expect(map.get('todos/2-blocks.md')!.referencedIds).toEqual(['1'])
+  })
+
+  test('stores ids referenced via #N in extraFields', async () => {
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-field-ref.md'),
+      `---\nstatus: new\ntype: task\nblocks: "#1"\n---\n# Some task\n`)
+    await commit()
+
+    const map = await loadMetaCache()
+    expect(map.get('todos/2-field-ref.md')!.referencedIds).toEqual(['1'])
+  })
+
+  test('does not match a longer id starting with the same digits', async () => {
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-mentions-10.md'),
+      `---\nstatus: new\ntype: task\n---\n# Depends on #10\n`)
+    await commit()
+
+    const map = await loadMetaCache()
+    expect(map.get('todos/2-mentions-10.md')!.referencedIds).toEqual(['10'])
+    expect(map.get('todos/2-mentions-10.md')!.referencedIds).not.toContain('1')
+  })
+
+  test('persists referencedIds in meta.json', async () => {
+    await writeFile(join(gitDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(gitDir, 'todos', '2-depends-on-1.md'),
+      `---\nstatus: new\ntype: task\n---\n# Depends on #1\n`)
+    await commit()
+
+    await loadMetaCache()
+
+    const raw = JSON.parse(await readFile(join(gitDir, '.todos', 'meta.json'), 'utf8'))
+    expect(raw['todos/2-depends-on-1.md'].referencedIds).toEqual(['1'])
+    expect(raw['todos/1-fix-login.md'].referencedIds).toBeUndefined()
   })
 })
 

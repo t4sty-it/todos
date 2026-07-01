@@ -423,6 +423,69 @@ describe('--json flag', () => {
   })
 })
 
+describe('<id> references', () => {
+  let refDir: string
+
+  const runR = async (...args: string[]) => {
+    const proc = Bun.spawn([process.execPath, 'run', CLI, ...args], {
+      cwd: refDir,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ])
+    return { out: stdout.trim(), err: stderr.trim(), exitCode }
+  }
+
+  const git = async (...args: string[]) => {
+    const proc = Bun.spawn(['git', ...args], { cwd: refDir, stdout: 'pipe', stderr: 'pipe' })
+    await proc.exited
+  }
+
+  beforeAll(async () => {
+    refDir = join(tmpdir(), 'todos-refs-e2e-' + Math.random().toString(36).slice(2))
+    await mkdir(join(refDir, 'todos'), { recursive: true })
+    await git('init')
+    await git('config', 'user.name', 'Test User')
+    await git('config', 'user.email', 'test@test.com')
+    await writeFile(join(refDir, 'todos', '1-fix-login.md'), TODO_1)
+    await writeFile(join(refDir, 'todos', '2-add-export.md'), TODO_2)
+    await git('add', 'todos/')
+    await git('commit', '-m', 'base todos')
+  })
+
+  afterAll(async () => {
+    await rm(refDir, { recursive: true, force: true })
+  })
+
+  test('lists todos that reference the given id', async () => {
+    await writeFile(join(refDir, 'todos', '4-depends-on-1.md'),
+      `---\nstatus: new\ntype: task\n---\n# Depends on #1\n`)
+    await git('add', 'todos/4-depends-on-1.md')
+    await git('commit', '-m', 'add referencing todo')
+    const { out } = await runR('1', 'references')
+    expect(strip(out)).toContain('#4')
+    expect(strip(out)).toContain('Depends on')
+  })
+
+  test('shows message when no references found', async () => {
+    const { out } = await runR('99', 'references')
+    expect(out).toContain('No references found')
+  })
+
+  test('does not match ids that are a prefix of a longer id', async () => {
+    await writeFile(join(refDir, 'todos', '5-mentions-10.md'),
+      `---\nstatus: new\ntype: task\n---\n# See #10\n`)
+    await git('add', 'todos/5-mentions-10.md')
+    await git('commit', '-m', 'add non-matching todo')
+    const { out } = await runR('1', 'references')
+    expect(strip(out)).not.toContain('#5')
+  })
+})
+
 describe('unrecognised input', () => {
   test('two-token unrecognised path shows help', async () => {
     // A single unknown token always routes to <id> (which then throws "not found").

@@ -1,7 +1,7 @@
 import { completing, doc, match, select, terminal, type Route, type Router } from "@/utils/router"
 import type { Config } from "@/config"
 import type { TodoStore } from "@/todoStore"
-import { detailDisplay, formatDiff, formatHistoryDate, jsonDetailDisplay, shortDisplay } from "@/display"
+import { detailDisplay, formatDiff, formatHistoryDate, jsonDetailDisplay, shortDisplay, tableDisplay } from "@/display"
 import { isAbsolute, dirname, relative } from "node:path"
 
 const readonlyFields = new Set(['id', 'url', 'createdAt', 'updatedAt'])
@@ -49,6 +49,15 @@ export const todo = (todos: TodoStore, config: Config): Router<Route<string>, st
     select(
       doc('<id> history', 'Show git history for a todo with diffs',
         match('history', terminal(r => historyDisplay(r.params['id']!, todos)))
+      ),
+      doc('<id> references', 'List todos that reference this todo by #id',
+        match('references', terminal(r =>
+          todos.references(r.params['id']!).then(refs =>
+            refs.length === 0
+              ? 'No references found.'
+              : tableDisplay(refs, config)
+          )
+        ))
       ),
       doc('<id> set <field> <value>', 'Set a field on a todo (id/url/createdAt/updatedAt are read-only)',
         match('set',

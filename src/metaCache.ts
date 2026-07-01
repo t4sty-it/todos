@@ -1,9 +1,9 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { basename, resolve, relative, join } from 'node:path'
 import { useCache } from './utils/useCache'
-import { parse, FILENAME_RE } from './todos'
+import { parse, extractRefs, FILENAME_RE } from './todos'
 
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 interface MetaEntry {
   blobSha: string
@@ -16,6 +16,7 @@ interface MetaEntry {
   type?: string
   tags?: string[]
   extraFields?: Record<string, string | string[]>
+  referencedIds?: string[]
 }
 
 type MetaStore = Record<string, MetaEntry>
@@ -29,6 +30,7 @@ export type MetaMapEntry = {
   type?: string
   tags?: string[]
   extraFields?: Record<string, string | string[]>
+  referencedIds?: string[]
 }
 
 const cacheDir = '.todos'
@@ -122,6 +124,7 @@ const buildMetaCache = async (paths: string[]): Promise<Map<string, MetaMapEntry
           process.stderr.write(`Warning: no git dates found for ${filename} (may not be committed yet); it will be excluded from listings\n`)
         }
         const { title, status, type, tags, extraFields } = parse(text, filename)
+        const referencedIds = extractRefs(text)
         return {
           filename,
           blobSha: info.sha,
@@ -129,6 +132,7 @@ const buildMetaCache = async (paths: string[]): Promise<Map<string, MetaMapEntry
           createdAt, updatedAt,
           id: FILENAME_RE.exec(basename(filename))![1]!,
           title, status, type, tags, extraFields,
+          referencedIds: referencedIds.length > 0 ? referencedIds : undefined,
         }
       })
     )).filter(u => u !== null)
@@ -150,6 +154,7 @@ const buildMetaCache = async (paths: string[]): Promise<Map<string, MetaMapEntry
         id: entry.id, title: entry.title,
         status: entry.status, type: entry.type, tags: entry.tags,
         extraFields: entry.extraFields,
+        referencedIds: entry.referencedIds,
       })
     } else if (blobShas.has(filename)) {
       process.stderr.write(`Warning: ${filename} has invalid dates in cache; it will be excluded from listings\n`)
@@ -171,7 +176,7 @@ export const setMetaCachePaths = (paths: string[]) => {
 export const loadMetaCache = () => _cache()
 export const resetMetaCache = () => { _cache = useCache(() => buildMetaCache(_paths)) }
 
-type MetaCachePatch = Partial<Pick<MetaMapEntry, 'title' | 'status' | 'type' | 'tags' | 'extraFields'>>
+type MetaCachePatch = Partial<Pick<MetaMapEntry, 'title' | 'status' | 'type' | 'tags' | 'extraFields' | 'referencedIds'>>
 
 export const patchMetaCacheEntry = async (filename: string, updates: MetaCachePatch) => {
   const map = await loadMetaCache()
