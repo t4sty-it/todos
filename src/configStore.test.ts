@@ -92,6 +92,32 @@ describe('useConfigStore', () => {
     }
   })
 
+  test('parses config with line comments', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), `{
+  // this is a comment
+  "editor": "nvim" // inline comment
+}`)
+    const config = await useConfigStore().get()
+    expect(config.editor).toBe('nvim')
+  })
+
+  test('parses config with block comments', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), `{
+  /* block comment */
+  "editor": /* inline block */ "vim"
+}`)
+    const config = await useConfigStore().get()
+    expect(config.editor).toBe('vim')
+  })
+
+  test('does not strip comment-like text inside strings', async () => {
+    await writeFile(join(tmpDir, 'todosConfig.json'), `{
+  "editor": "code --wait // not a comment"
+}`)
+    const config = await useConfigStore().get()
+    expect(config.editor).toBe('code --wait // not a comment')
+  })
+
   test('each call to useConfigStore creates an independent memoized cache', async () => {
     await writeFile(join(tmpDir, 'todosConfig.json'), JSON.stringify({ editor: 'vim' }))
     const store1 = useConfigStore()
