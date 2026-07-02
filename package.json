@@ -16,6 +16,7 @@
   },
   "scripts": {
     "deploy": "bun build src/index --compile --outfile _todos && mv _todos $HOME/.bin/todos && mkdir -p $HOME/.bash_completion.d && todos completions bash > $HOME/.bash_completion.d/todos",
+    "release": "bun scripts/release.ts",
     "test": "bun test",
     "test:unit": "bun test src/todos.test.ts src/utils/useCache.test.ts src/utils/router.test.ts src/config.test.ts",
     "test:integration": "bun test src/todoStore.test.ts src/configStore.test.ts",

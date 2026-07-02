@@ -5,10 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-bun install          # install dependencies
-bun run src/index.ts # run the CLI
-bun test             # run all tests
-bun run deploy       # compile and install binary to $HOME/.bin/todos and completion script to $HOME/.bash_completion.d/todos
+bun install                    # install dependencies
+bun run src/index.ts           # run the CLI
+bun test                       # run all tests
+bun run deploy                 # compile and install binary to $HOME/.bin/todos and completion script to $HOME/.bash_completion.d/todos
+bun run release <version>      # cross-compile for all platforms, bump package.json, and publish a GitHub Release (e.g. bun run release 0.28.0)
 ```
 
 ## Architecture
@@ -99,6 +100,7 @@ Builds a `Router` directly from the todo store using `select`/`match`/`param`/`c
 |---------|-------------|
 | `--help` / `-h` | Print help listing all commands (also shown when no args given or route not found) |
 | `--version` / `-v` | Print the version from `package.json` |
+| `--upgrade` | Fetch the latest GitHub Release for `t4sty-it/todos`, compare to current version, download the platform-appropriate binary, atomically replace `process.execPath`, and regenerate the bash completion script; no auth required (public repo) |
 | `completions bash` | Print a bash completion script (`eval "$(todos completions bash)"`) |
 | `completions query <cword> <words...>` | Internal: return newline-separated completion candidates for the given cursor position; called by the completion script |
 | `all` | List all todos as an aligned table with datetimes |
@@ -132,3 +134,7 @@ Listing commands (`all`, `with`, `view`, `search`) render via `tableDisplay(todo
 
 - `src/utils/useCache.ts` — simple memoize-once wrapper; used by the store (todos read once per run) and `metaCache.ts` (meta cache built once per run)
 - `src/io.ts` — `write` (stdout) and `prompt` (read one line from stdin)
+
+### Release (`scripts/release.ts`)
+
+Run via `bun run release <version>`. Validates the semver arg, bumps `package.json`, cross-compiles five standalone binaries into `dist/` using Bun's `--target` flag (`bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-x64`, `bun-darwin-arm64`, `bun-windows-x64`), then calls `gh release create <version> dist/todos-* --generate-notes` to publish them. Requires `gh` authenticated (`gh auth login`). Tags are bare versions (e.g. `0.28.0`, not `v0.28.0`).

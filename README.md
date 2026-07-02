@@ -18,6 +18,7 @@ Run from a directory that contains a `todos/` folder (or any ancestor that conta
 
 ```bash
 todos --help                             # show this command listing
+todos --upgrade                          # upgrade to the latest release
 todos all                                # list all todos
 todos view <name>                        # apply a named view (filter + sort defined in config)
 todos fields                             # list available fields

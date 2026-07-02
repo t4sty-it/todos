@@ -5,6 +5,7 @@ import { helpText, route, select, type Route, type Router } from "./utils/router
 import { findProjectRoot } from "./utils/findProjectRoot"
 import { help } from './commands/help'
 import { version } from './commands/version'
+import { upgrade } from './commands/upgrade'
 import { completions } from './commands/completions'
 import { all } from './commands/all'
 import { fields } from './commands/fields'
@@ -32,6 +33,7 @@ if (args.includes('--json')) {
 const router: Router<Route<string>, string> = select(
   help(() => router),
   version,
+  upgrade,
   completions(() => router),
   all(todos, config),
   fields(todos),
