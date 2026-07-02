@@ -14,6 +14,17 @@ pkg.version = version
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n")
 console.log(`Bumped package.json to ${version}`)
 
+const tag = version
+await $`git add ${pkgPath}`
+await $`git commit -m ${tag}`
+await $`git tag ${tag}`
+console.log(`Committed and tagged ${tag}`)
+
+const remote = (await $`git remote`.text()).trim().split("\n")[0]
+await $`git push ${remote}`
+await $`git push ${remote} ${tag}`
+console.log(`Pushed commit and tag ${tag} to ${remote}`)
+
 const targets: { bun: string; name: string }[] = [
   { bun: "bun-linux-x64",    name: "todos-linux-x64" },
   { bun: "bun-linux-arm64",  name: "todos-linux-arm64" },
@@ -29,7 +40,6 @@ for (const target of targets) {
   await $`bun build ${srcDir}/src/index --compile --target=${target.bun} --outfile ${srcDir}/dist/${target.name}`
 }
 
-const tag = version
 console.log(`Creating GitHub release ${tag}...`)
 await $`gh release create ${tag} ${srcDir}/dist/todos-* --title ${tag} --generate-notes`
 
