@@ -1,6 +1,6 @@
 import { doc, match, terminal, type Route, type Router } from "@/utils/router"
 import { mkdir, writeFile, access } from "node:fs/promises"
-import sampleConfig from "../../assets/todosConfig.sample.json"
+import sampleConfig from "../../assets/todosConfig.sample.txt"
 
 const configFile = "todosConfig.json"
 const todosDir = "todos"
@@ -18,7 +18,7 @@ export const init = (): Router<Route<string>, string> =>
 
       await Promise.all([
         mkdir(todosDir),
-        writeFile(configFile, JSON.stringify(sampleConfig, null, 2) + '\n'),
+        writeFile(configFile, sampleConfig),
       ])
 
       return `Initialized todos project:\n  created ${todosDir}/\n  created ${configFile}`
